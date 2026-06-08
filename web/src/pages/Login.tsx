@@ -75,8 +75,7 @@ export function LoginPage() {
     <div className="login-page">
       <PwaInstallPrompt />
       <form className="login-card" onSubmit={(e) => void handleSubmit(e)}>
-        <span className="wordmark">FALLEN SPARROW</span>
-        <h1>Fallen Sparrow Operating System</h1>
+        <span className="wordmark">FALLEN SPARROW OPERATING SYSTEM</span>
         <label>
           Email
           <input
