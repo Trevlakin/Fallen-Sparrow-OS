@@ -364,6 +364,10 @@ textarea {
   gap: 1rem;
 }
 
+.login-card .wordmark::after {
+  content: " Operating System";
+}
+
 .login-card label {
   display: flex;
   flex-direction: column;
