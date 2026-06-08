@@ -55,6 +55,11 @@ const optionalSprintSchema = z.object({
   BRIEFING_SEND_HOUR: z.coerce.number().int().min(0).max(23).default(6),
   WEEKLY_REPORT_DAY: z.coerce.number().int().min(0).max(6).default(5),
   WEEKLY_REPORT_HOUR: z.coerce.number().int().min(0).max(23).default(17),
+  /** Production seed: Legion's owner login (required before pnpm db:seed in prod). */
+  OWNER_SEED_EMAIL: z.string().email().optional(),
+  OWNER_SEED_PASSWORD: z.string().min(12).optional(),
+  /** Set to "true" to seed demo staff accounts in production (not recommended). */
+  SEED_DEMO_USERS: z.string().optional(),
 });
 
 const envSchema = baseSchema.merge(optionalSprintSchema);

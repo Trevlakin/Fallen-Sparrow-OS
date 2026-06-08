@@ -15,12 +15,12 @@ const DEMO_ACCOUNTS = [
   { label: "Carlos (Artist)", email: "carlos@fallensparrow.local" },
 ] as const;
 
-const isDevLoginHelper = import.meta.env.DEV || import.meta.env.MODE === "development";
+const isProduction = import.meta.env.PROD;
 
 export function LoginPage() {
   const { user, login, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("owner@fallensparrow.local");
+  const [email, setEmail] = useState(isProduction ? "" : "owner@fallensparrow.local");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -121,9 +121,9 @@ export function LoginPage() {
         <button type="submit" className="btn-amber btn-full" disabled={busy}>
           {startingUp ? "Connecting..." : submitting ? "Signing in..." : "Sign In"}
         </button>
-        {isDevLoginHelper && (
+        {!isProduction && (
           <div className="login-demo">
-            <p className="login-demo-title">Preview as employee</p>
+            <p className="login-demo-title">Preview as employee (local dev only)</p>
             <div className="login-demo-accounts">
               {DEMO_ACCOUNTS.map((account) => (
                 <button
@@ -141,6 +141,11 @@ export function LoginPage() {
               <Link to="/sop-checklist">Maintenance checklist (JP, PIN 7777)</Link>
             </p>
           </div>
+        )}
+        {isProduction && (
+          <p className="login-demo-maintenance">
+            <Link to="/sop-checklist">Staff opening checklist</Link>
+          </p>
         )}
       </form>
     </div>

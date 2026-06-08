@@ -13,6 +13,7 @@ import {
   users,
 } from "@fallen-sparrow/shared/schema";
 import { eq } from "drizzle-orm";
+import { env } from "../config/env.js";
 import { db, pool } from "../config/database.js";
 import { hashPassword } from "../services/authService.js";
 import { hashPin } from "../services/teamMemberService.js";
@@ -85,7 +86,48 @@ const DEMO_APP_USERS = [
 ] as const;
 
 async function seedUsers(): Promise<void> {
+  const isProduction = env.NODE_ENV === "production";
+  const allowDemoUsers = env.SEED_DEMO_USERS === "true";
+
+  if (isProduction) {
+    const ownerEmail = env.OWNER_SEED_EMAIL;
+    const ownerPassword = env.OWNER_SEED_PASSWORD;
+    if (!ownerEmail || !ownerPassword) {
+      console.warn(
+        "Skipping user seed in production. Set OWNER_SEED_EMAIL and OWNER_SEED_PASSWORD, then run pnpm db:seed.",
+      );
+      return;
+    }
+
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, ownerEmail))
+      .limit(1);
+
+    if (!existing[0]) {
+      await db.insert(users).values({
+        email: ownerEmail,
+        passwordHash: await hashPassword(ownerPassword),
+        firstName: "Legion",
+        lastName: "Avegno",
+        role: "OWNER",
+        phone: null,
+        isActive: true,
+      });
+      console.log(`Created owner: ${ownerEmail}`);
+    }
+
+    if (!allowDemoUsers) {
+      return;
+    }
+  }
+
   for (const user of DEMO_APP_USERS) {
+    if (isProduction && user.role === "OWNER") {
+      continue;
+    }
+
     const existing = await db
       .select()
       .from(users)
@@ -93,16 +135,21 @@ async function seedUsers(): Promise<void> {
       .limit(1);
 
     if (!existing[0]) {
+      const password = isProduction ? DEMO_PASSWORD : DEMO_PASSWORD;
       await db.insert(users).values({
         email: user.email,
-        passwordHash: await hashPassword(DEMO_PASSWORD),
+        passwordHash: await hashPassword(password),
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
         phone: null,
         isActive: true,
       });
-      console.log(`Created ${user.role.toLowerCase()}: ${user.email} / ${DEMO_PASSWORD}`);
+      console.log(
+        isProduction
+          ? `Created ${user.role.toLowerCase()}: ${user.email}`
+          : `Created ${user.role.toLowerCase()}: ${user.email} / ${DEMO_PASSWORD}`,
+      );
     }
   }
 }

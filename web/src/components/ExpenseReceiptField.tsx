@@ -1,6 +1,8 @@
 import { useRef } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+import { getApiBase } from "../lib/apiBase.js";
+
+const API_BASE = getApiBase();
 
 function resolveReceiptSrc(receiptUrl: string | null | undefined, previewUrl: string | null | undefined): string | null {
   if (previewUrl) return previewUrl;

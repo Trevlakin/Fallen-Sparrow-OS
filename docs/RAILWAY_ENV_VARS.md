@@ -11,6 +11,8 @@ Set each key/value pair individually, or use Railway's bulk-paste (raw editor) f
 
 ```
 NODE_ENV=production
+OWNER_SEED_EMAIL=legion@fallensparrowos.com
+OWNER_SEED_PASSWORD=<pick a strong password, 12+ chars>
 JWT_SECRET=93feed4044a68f9db354b91d243abcdb6b4a1a90b58e9bf601ed4398938e311c
 JWT_EXPIRES_IN=7d
 BCRYPT_ROUNDS=12
