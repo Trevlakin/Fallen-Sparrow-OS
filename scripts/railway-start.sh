@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Railway monorepo start: picks server vs web from RAILWAY_SERVICE_NAME.
+# Railway monorepo start: FS_ROLE env var decides server vs web.
+# Set FS_ROLE=web on the web service, FS_ROLE=server (or leave unset) on the API.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-service_name="${RAILWAY_SERVICE_NAME:-}"
-service_name_lower="$(printf '%s' "$service_name" | tr '[:upper:]' '[:lower:]')"
+role="${FS_ROLE:-server}"
+echo "Railway start: role=${role}, PORT=${PORT:-unset}"
 
-if [[ "$service_name_lower" == *web* ]]; then
-  echo "Railway start: @fallen-sparrow/web (service=${service_name:-unknown}, PORT=${PORT:-unset})"
-  exec pnpm --filter @fallen-sparrow/web start
+if [[ "$role" == "web" ]]; then
+  echo "Starting SPA (serve)"
+  exec npx serve web/dist -s -l "${PORT:-4173}"
 fi
 
-echo "Railway start: @fallen-sparrow/server (service=${service_name:-unknown}, PORT=${PORT:-unset})"
+echo "Starting API (Express)"
 exec pnpm --filter @fallen-sparrow/server start
