@@ -48,3 +48,21 @@ in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth cal
 - **QBO_REALM_ID**: Leave blank until QuickBooks OAuth is connected in production.
 - **JWT_SECRET**: Freshly rotated on 2026-06-08. The old value is invalidated.
 
+---
+
+## First login (503 / "Connecting..." on www)
+
+If login returns 503 or the app says the database is unavailable:
+
+1. Railway project → confirm a **PostgreSQL** service exists and the **API service** has `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+2. API service → **Settings** → **Shell** (run from repo root):
+
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+3. Redeploy the API service if you changed variables. Sign in with `OWNER_SEED_EMAIL` / `OWNER_SEED_PASSWORD` (default `admin@fallensparrowos.com` / `ChangeMe123!` until changed).
+
+Verify: `curl -X POST https://api.fallensparrowos.com/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@fallensparrowos.com","password":"ChangeMe123!"}'` should return `200` with a token, not `503`.
+

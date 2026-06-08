@@ -1,6 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
+import { env } from "../config/env.js";
 import { isAppError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
+
+function databaseUnavailableMessage(): string {
+  if (env.NODE_ENV === "production") {
+    return "Database is unavailable. Link Postgres on Railway, set DATABASE_URL, then run pnpm db:migrate in the API service shell.";
+  }
+  return "Database is not running. Run: pnpm dev (starts Postgres + API + frontend together).";
+}
 
 export function errorHandler(
   err: unknown,
@@ -29,8 +37,7 @@ export function errorHandler(
   if (pgCode === "ECONNREFUSED" || pgCode === "ENOTFOUND") {
     logger.error("Database connection failed", { err });
     res.status(503).json({
-      error:
-        "Database is not running. Run: pnpm dev (starts Postgres + API + frontend together).",
+      error: databaseUnavailableMessage(),
       statusCode: 503,
     });
     return;

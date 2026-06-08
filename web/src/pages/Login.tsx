@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api";
@@ -34,7 +34,9 @@ export function LoginPage() {
         setStartingUp(false);
         if (err instanceof ApiError) {
           if (err.statusCode === 503) {
-            setError("Studio is starting up. Try again in a moment.");
+            setError(
+              "Studio database is unavailable. An administrator must link Postgres on Railway, then run pnpm db:migrate and pnpm db:seed in the API service shell.",
+            );
           } else if (err.statusCode >= 500) {
             setError("Something went wrong. Try again shortly.");
           } else {
@@ -47,14 +49,6 @@ export function LoginPage() {
     },
     [login, navigate],
   );
-
-  useEffect(() => {
-    if (!loading && user) return;
-    const hasToken = Boolean(localStorage.getItem("fs_token"));
-    if (hasToken && !user && !loading) {
-      setStartingUp(true);
-    }
-  }, [loading, user]);
 
   if (!loading && user) {
     return <Navigate to="/" replace />;
@@ -69,7 +63,7 @@ export function LoginPage() {
     setSubmitting(false);
   };
 
-  const busy = submitting || startingUp;
+  const busy = loading || submitting || startingUp;
 
   return (
     <div className="login-page">
@@ -99,12 +93,22 @@ export function LoginPage() {
             autoComplete="current-password"
           />
         </label>
-        {startingUp && !error && (
-          <p className="login-status-text">Connecting to studio, please wait...</p>
+        {(loading || startingUp) && !error && (
+          <p className="login-status-text">
+            {loading
+              ? "Checking your session..."
+              : "Connecting to studio, please wait..."}
+          </p>
         )}
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="btn-amber btn-full" disabled={busy}>
-          {startingUp ? "Connecting..." : submitting ? "Signing in..." : "Sign In"}
+          {loading
+            ? "Checking session..."
+            : startingUp
+              ? "Connecting..."
+              : submitting
+                ? "Signing in..."
+                : "Sign In"}
         </button>
         <p className="login-demo-maintenance">
           <Link to="/sop-checklist">Staff opening checklist</Link>
