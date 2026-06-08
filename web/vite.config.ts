@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: null,
+      injectRegister: "auto",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png", "offline.html"],
       manifest: {
         name: "Fallen Sparrow",
