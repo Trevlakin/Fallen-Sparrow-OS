@@ -27,10 +27,17 @@ GoDaddy                    → DNS only (you manage this)
 
 ### Web (`@fallen-sparrow/web`)
 
-1. **Networking** → **+ Custom Domain** → `fallensparrowos.com` → copy CNAME target
-2. Optional: add `www.fallensparrowos.com` (or forward www → apex in GoDaddy)
+1. **Settings** → **Root Directory:** leave **empty** (repo root `.`) OR set to `web`. Both work:
+   - Repo root: `scripts/railway-build.sh` / `scripts/railway-start.sh` use `RAILWAY_SERVICE_NAME` (must contain `web`) to build and serve the SPA.
+   - `web/`: uses `web/nixpacks.toml`, `web/Procfile`, and `web/scripts/start-production.sh`.
+2. **Settings** → confirm **Start Command** is empty (let `railway.toml` / Nixpacks run) OR explicitly `sh scripts/start-production.sh` if Root Directory is `web`.
+3. **Settings** → **Build Command:** leave empty unless overriding; should **not** run `pnpm --filter @fallen-sparrow/server`.
+4. **Networking** → **+ Custom Domain** → `www.fallensparrowos.com` (and apex if needed) → copy CNAME target
+5. After deploy, build logs should show `Railway build: @fallen-sparrow/web` and start logs `serve` on `PORT`.
 
 No extra env vars needed on web. The build bakes in `VITE_API_BASE_URL=https://api.fallensparrowos.com`.
+
+**If www still returns API JSON (`x-powered-by: Express`):** the web service is running the server start command. Open web service → **Deployments** → latest → **View logs** and confirm you see the web build line above, not only server TypeScript compile. Then **Redeploy** (or push to `main`).
 
 ### Delete nothing
 

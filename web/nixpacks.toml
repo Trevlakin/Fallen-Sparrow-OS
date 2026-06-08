@@ -1,0 +1,16 @@
+# Used when Railway web service Root Directory is "web".
+# Monorepo install/build still runs from repository root via cd ..
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm"]
+
+[phases.install]
+cmds = ["cd .. && pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "cd .. && pnpm --filter @fallen-sparrow/shared build",
+  "cd .. && VITE_API_BASE_URL=https://api.fallensparrowos.com pnpm --filter @fallen-sparrow/web build"
+]
+
+[start]
+cmd = "sh scripts/start-production.sh"

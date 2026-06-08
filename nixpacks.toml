@@ -5,10 +5,7 @@ nixPkgs = ["nodejs_22", "pnpm"]
 cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = [
-  "pnpm --filter @fallen-sparrow/shared build",
-  "pnpm --filter @fallen-sparrow/server build"
-]
+cmds = ["bash scripts/railway-build.sh"]
 
 [start]
-cmd = "pnpm --filter @fallen-sparrow/server start"
+cmd = "bash scripts/railway-start.sh"

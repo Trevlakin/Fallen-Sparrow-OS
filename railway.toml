@@ -1,9 +1,10 @@
+# Monorepo: RAILWAY_SERVICE_NAME selects server vs web (see scripts/railway-*.sh).
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @fallen-sparrow/shared build && pnpm --filter @fallen-sparrow/server build"
+buildCommand = "pnpm install --frozen-lockfile && bash scripts/railway-build.sh"
 
 [deploy]
-startCommand = "pnpm --filter @fallen-sparrow/server start"
+startCommand = "bash scripts/railway-start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
