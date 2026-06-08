@@ -37,12 +37,19 @@ QBO_REALM_ID=
 - **DATABASE_URL**: Do NOT paste a plain connection string. In Railway, click "Add Variable", set
 the key to `DATABASE_URL`, and set the value to the reference `${{Postgres.DATABASE_URL}}`.
 This ensures Railway automatically injects the correct internal Postgres URL.
+- **Auto-migrate on boot**: The API service runs `pnpm db:migrate` automatically on every deploy
+(via `scripts/railway-boot.sh`) before the server starts listening. You do not need Railway Shell
+for migrations unless auto-migrate fails in deploy logs.
+- **Auto-seed on boot**: When `OWNER_SEED_EMAIL` and `OWNER_SEED_PASSWORD` are set, the API runs
+`pnpm db:seed` after migrate on every deploy. Seed is idempotent: it creates the owner only if
+missing. Manual shell seed is optional.
 - **ANTHROPIC_API_KEY**: This key was previously exposed in a chat log. You should rotate it at
 [console.anthropic.com](https://console.anthropic.com) and update this value (and Railway) with
 the new key as soon as possible.
 - **APP_BASE_URL**: Set to `https://api.fallensparrowos.com` (the API server's own base URL, used for OAuth callbacks and CORS). Update only if the Railway custom domain changes.
 - **WEB_APP_URL**: Set to `https://www.fallensparrowos.com` (Railway web service). Used for CORS.
-- **OWNER_SEED_EMAIL / OWNER_SEED_PASSWORD**: Run `pnpm db:seed` once after migrate to create the owner login. Initial: `admin@fallensparrowos.com` / `ChangeMe123!` (Legion should change this after first sign-in).
+- **OWNER_SEED_EMAIL / OWNER_SEED_PASSWORD**: Required for first owner login in production.
+Initial: `admin@fallensparrowos.com` / `ChangeMe123!` (Legion should change this after first sign-in).
 - **QBO_REDIRECT_URI**: Updated from localhost to the production URL. Ensure this URI is registered
 in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth callbacks will fail.
 - **QBO_REALM_ID**: Leave blank until QuickBooks OAuth is connected in production.
@@ -55,14 +62,15 @@ in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth cal
 If login returns 503 or the app says the database is unavailable:
 
 1. Railway project → confirm a **PostgreSQL** service exists and the **API service** has `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
-2. API service → **Settings** → **Shell** (run from repo root):
+2. Confirm **OWNER_SEED_EMAIL** and **OWNER_SEED_PASSWORD** are set on the API service (see Variables above).
+3. **Redeploy the API service** (Deploy → Redeploy). Boot runs migrate + seed automatically; check deploy logs for `Railway boot: running database migrations`.
+4. Sign in with `OWNER_SEED_EMAIL` / `OWNER_SEED_PASSWORD` (default `admin@fallensparrowos.com` / `ChangeMe123!` until changed).
+
+Manual fallback (only if auto-migrate fails in logs): API service → **Settings** → **Shell**:
 
 ```bash
 pnpm db:migrate
 pnpm db:seed
 ```
 
-3. Redeploy the API service if you changed variables. Sign in with `OWNER_SEED_EMAIL` / `OWNER_SEED_PASSWORD` (default `admin@fallensparrowos.com` / `ChangeMe123!` until changed).
-
 Verify: `curl -X POST https://api.fallensparrowos.com/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@fallensparrowos.com","password":"ChangeMe123!"}'` should return `200` with a token, not `503`.
-

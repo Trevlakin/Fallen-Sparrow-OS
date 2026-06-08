@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -15,8 +15,6 @@ interface ProtectedRouteProps {
   deniedMessage?: string;
 }
 
-// How long to wait for a token-bearing session to be confirmed before
-// redirecting to login. This covers the "API is still starting" window.
 const SESSION_CONFIRM_MS = 8_000;
 
 export function ProtectedRoute({
@@ -25,31 +23,23 @@ export function ProtectedRoute({
   redirectTo = "/",
   deniedMessage = "You do not have access to that page",
 }: ProtectedRouteProps) {
-  const { user, loading, refresh } = useAuth();
+  const { user, loading, sessionError } = useAuth();
   const { showToast } = useToast();
   const [timedOut, setTimedOut] = useState(false);
-  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasToken = Boolean(localStorage.getItem("fs_token"));
 
-  // If we have a stored token but no user yet (loading still resolving or
-  // the first refresh hit a dead server), retry once more before giving up.
   useEffect(() => {
-    if (!loading && !user && hasToken && !timedOut) {
-      const delay = 2_000;
-      retryRef.current = setTimeout(() => {
-        void refresh();
-      }, delay);
+    if (!loading && !user && hasToken && !timedOut && !sessionError) {
       const timeout = setTimeout(() => {
         setTimedOut(true);
       }, SESSION_CONFIRM_MS);
       return () => {
-        clearTimeout(retryRef.current ?? 0);
         clearTimeout(timeout);
       };
     }
     return undefined;
-  }, [loading, user, hasToken, timedOut, refresh]);
+  }, [loading, user, hasToken, timedOut, sessionError]);
 
   const denied = Boolean(
     user &&
@@ -63,7 +53,10 @@ export function ProtectedRoute({
     }
   }, [denied, deniedMessage, showToast]);
 
-  // Still loading or waiting for retry
+  if (sessionError) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (loading || (!user && hasToken && !timedOut)) {
     return <div className="page-loading">Connecting...</div>;
   }

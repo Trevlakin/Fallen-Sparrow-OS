@@ -17,4 +17,4 @@ if [[ "$role" == "web" ]]; then
 fi
 
 echo "Starting API (Express)"
-exec pnpm --filter @fallen-sparrow/server start
+exec bash scripts/railway-boot.sh

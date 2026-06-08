@@ -2,10 +2,14 @@ import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env.js";
 import { isAppError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
+import { getPgErrorCode, isDatabaseUnavailableError } from "../utils/pgErrors.js";
 
-function databaseUnavailableMessage(): string {
+function databaseUnavailableMessage(pgCode: string | null): string {
   if (env.NODE_ENV === "production") {
-    return "Database is unavailable. Link Postgres on Railway, set DATABASE_URL, then run pnpm db:migrate in the API service shell.";
+    if (pgCode === "42P01" || pgCode === "3F000") {
+      return "Database not ready. Migrations run automatically on deploy; redeploy the API service or contact admin.";
+    }
+    return "Database not ready. Link Postgres on Railway with DATABASE_URL, then redeploy so migrations run on boot.";
   }
   return "Database is not running. Run: pnpm dev (starts Postgres + API + frontend together).";
 }
@@ -24,20 +28,11 @@ export function errorHandler(
     return;
   }
 
-  const pgCode =
-    err &&
-    typeof err === "object" &&
-    "cause" in err &&
-    err.cause &&
-    typeof err.cause === "object" &&
-    "code" in err.cause
-      ? String((err.cause as { code?: string }).code)
-      : null;
-
-  if (pgCode === "ECONNREFUSED" || pgCode === "ENOTFOUND") {
-    logger.error("Database connection failed", { err });
+  if (isDatabaseUnavailableError(err)) {
+    const pgCode = getPgErrorCode(err);
+    logger.error("Database connection failed", { err, pgCode });
     res.status(503).json({
-      error: databaseUnavailableMessage(),
+      error: databaseUnavailableMessage(pgCode),
       statusCode: 503,
     });
     return;

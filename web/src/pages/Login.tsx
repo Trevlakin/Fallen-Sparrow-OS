@@ -2,13 +2,14 @@ import { FormEvent, useCallback, useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api";
+import { DATABASE_UNAVAILABLE_MESSAGE } from "@/lib/authMessages";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 const STARTUP_RETRY_MS = 2_000;
-const STARTUP_MAX_ATTEMPTS = 15;
+const STARTUP_MAX_ATTEMPTS = 5;
 
 export function LoginPage() {
-  const { user, login, loading } = useAuth();
+  const { user, login, loading, sessionError, clearSessionError } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,9 +18,12 @@ export function LoginPage() {
   const [startingUp, setStartingUp] = useState(false);
   const credentialsRef = useRef({ email: "", password: "" });
 
+  const displayError = error ?? sessionError;
+
   const attemptLogin = useCallback(
     async (loginEmail: string, loginPassword: string, attempt = 0): Promise<void> => {
       try {
+        clearSessionError();
         await login(loginEmail, loginPassword);
         setStartingUp(false);
         navigate("/");
@@ -34,9 +38,7 @@ export function LoginPage() {
         setStartingUp(false);
         if (err instanceof ApiError) {
           if (err.statusCode === 503) {
-            setError(
-              "Studio database is unavailable. An administrator must link Postgres on Railway, then run pnpm db:migrate and pnpm db:seed in the API service shell.",
-            );
+            setError(DATABASE_UNAVAILABLE_MESSAGE);
           } else if (err.statusCode >= 500) {
             setError("Something went wrong. Try again shortly.");
           } else {
@@ -47,7 +49,7 @@ export function LoginPage() {
         }
       }
     },
-    [login, navigate],
+    [clearSessionError, login, navigate],
   );
 
   if (!loading && user) {
@@ -57,13 +59,14 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    clearSessionError();
     setSubmitting(true);
     credentialsRef.current = { email, password };
     await attemptLogin(email, password);
     setSubmitting(false);
   };
 
-  const busy = loading || submitting || startingUp;
+  const formDisabled = submitting || startingUp;
 
   return (
     <div className="login-page">
@@ -77,7 +80,7 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={busy}
+            disabled={formDisabled}
             placeholder="your@email.com"
             autoComplete="email"
           />
@@ -89,25 +92,24 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={busy}
+            disabled={formDisabled}
             autoComplete="current-password"
           />
         </label>
-        {(loading || startingUp) && !error && (
-          <p className="login-status-text">
-            {loading
-              ? "Checking your session..."
-              : "Connecting to studio, please wait..."}
-          </p>
+        {loading && !displayError && (
+          <p className="login-status-text">Checking your session...</p>
         )}
-        {error && <p className="error-text">{error}</p>}
-        <button type="submit" className="btn-amber btn-full" disabled={busy}>
-          {loading
-            ? "Checking session..."
-            : startingUp
-              ? "Connecting..."
-              : submitting
-                ? "Signing in..."
+        {startingUp && !displayError && (
+          <p className="login-status-text">Connecting to studio, please wait...</p>
+        )}
+        {displayError && <p className="error-text">{displayError}</p>}
+        <button type="submit" className="btn-amber btn-full" disabled={formDisabled}>
+          {startingUp
+            ? "Connecting..."
+            : submitting
+              ? "Signing in..."
+              : loading
+                ? "Sign In"
                 : "Sign In"}
         </button>
         <p className="login-demo-maintenance">

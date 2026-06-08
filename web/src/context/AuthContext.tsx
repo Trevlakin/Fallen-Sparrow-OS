@@ -9,6 +9,10 @@ import {
 } from "react";
 import { hasManagerAccess, type UserRole } from "@fallen-sparrow/shared/constants";
 import { api, setToken, ApiError } from "@/lib/api";
+import {
+  DATABASE_UNAVAILABLE_MESSAGE,
+  SESSION_CHECK_TIMEOUT_MESSAGE,
+} from "@/lib/authMessages";
 
 export interface AuthUser {
   id: string;
@@ -21,37 +25,71 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
+  sessionError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  clearSessionError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const SESSION_CHECK_TIMEOUT_MS = 10_000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  const clearSessionError = useCallback(() => {
+    setSessionError(null);
+  }, []);
 
   const refresh = useCallback(async () => {
+    const token = localStorage.getItem("fs_token");
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
     try {
       const res = await api.get<{ user: AuthUser }>("/api/auth/me");
       setUser(res.user);
+      setSessionError(null);
     } catch (err) {
-      // Only clear the stored token when the server explicitly rejects auth (401/403).
-      // A network error or 5xx (e.g. API starting up, Postgres not ready) should NOT
-      // wipe credentials — the user was previously logged in and the token is still valid.
-      if (err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 403)) {
-        setToken(null);
+      if (err instanceof ApiError) {
+        if (err.statusCode === 401 || err.statusCode === 403) {
+          setToken(null);
+        } else if (err.statusCode === 503) {
+          setToken(null);
+          setSessionError(DATABASE_UNAVAILABLE_MESSAGE);
+        }
       }
       setUser(null);
     }
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setLoading(false);
+        setSessionError((prev) => prev ?? SESSION_CHECK_TIMEOUT_MESSAGE);
+      }
+    }, SESSION_CHECK_TIMEOUT_MS);
+
     void (async () => {
       await refresh();
-      setLoading(false);
+      if (!cancelled) {
+        clearTimeout(timeout);
+        setLoading(false);
+      }
     })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -61,16 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setToken(res.token);
     setUser(res.user);
+    setSessionError(null);
   }, []);
 
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    setSessionError(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, refresh }),
-    [user, loading, login, logout, refresh],
+    () => ({
+      user,
+      loading,
+      sessionError,
+      login,
+      logout,
+      refresh,
+      clearSessionError,
+    }),
+    [user, loading, sessionError, login, logout, refresh, clearSessionError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
