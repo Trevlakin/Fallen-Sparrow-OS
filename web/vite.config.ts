@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: "Fallen Sparrow",
         short_name: "Fallen Sparrow",
-        description: "Fallen Sparrow Tattoo Studio Management",
+        description: "Fallen Sparrow Operating System",
         theme_color: "#0A0A0A",
         background_color: "#0A0A0A",
         display: "standalone",
