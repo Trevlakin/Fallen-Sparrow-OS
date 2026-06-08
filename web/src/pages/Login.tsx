@@ -6,21 +6,11 @@ import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 const STARTUP_RETRY_MS = 2_000;
 const STARTUP_MAX_ATTEMPTS = 15;
-const DEMO_PASSWORD = "ChangeMe123!";
-
-const DEMO_ACCOUNTS = [
-  { label: "Legion (Owner)", email: "owner@fallensparrow.local" },
-  { label: "Hector (Manager)", email: "hector@fallensparrow.local" },
-  { label: "Front Desk", email: "frontdesk@fallensparrow.local" },
-  { label: "Carlos (Artist)", email: "carlos@fallensparrow.local" },
-] as const;
-
-const isProduction = import.meta.env.PROD;
 
 export function LoginPage() {
   const { user, login, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(isProduction ? "" : "owner@fallensparrow.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -44,21 +34,20 @@ export function LoginPage() {
         setStartingUp(false);
         if (err instanceof ApiError) {
           if (err.statusCode === 503) {
-            setError("Database did not start in time. Run: pnpm dev");
+            setError("Studio is starting up. Try again in a moment.");
           } else if (err.statusCode >= 500) {
-            setError("API server is not running. In the project folder run: pnpm dev");
+            setError("Something went wrong. Try again shortly.");
           } else {
             setError(err.message);
           }
         } else {
-          setError("Cannot reach the API. Run: pnpm dev");
+          setError("Cannot reach the studio server. Check your connection and try again.");
         }
       }
     },
     [login, navigate],
   );
 
-  // If a token exists, ProtectedRoute handles the redirect; show connecting state here too.
   useEffect(() => {
     if (!loading && user) return;
     const hasToken = Boolean(localStorage.getItem("fs_token"));
@@ -80,12 +69,6 @@ export function LoginPage() {
     setSubmitting(false);
   };
 
-  const fillDemoAccount = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword(DEMO_PASSWORD);
-    setError(null);
-  };
-
   const busy = submitting || startingUp;
 
   return (
@@ -102,6 +85,8 @@ export function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={busy}
+            placeholder="your@email.com"
+            autoComplete="email"
           />
         </label>
         <label>
@@ -112,41 +97,19 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={busy}
+            autoComplete="current-password"
           />
         </label>
         {startingUp && !error && (
-          <p className="login-status-text">Starting database, please wait...</p>
+          <p className="login-status-text">Connecting to studio, please wait...</p>
         )}
         {error && <p className="error-text">{error}</p>}
         <button type="submit" className="btn-amber btn-full" disabled={busy}>
           {startingUp ? "Connecting..." : submitting ? "Signing in..." : "Sign In"}
         </button>
-        {!isProduction && (
-          <div className="login-demo">
-            <p className="login-demo-title">Preview as employee (local dev only)</p>
-            <div className="login-demo-accounts">
-              {DEMO_ACCOUNTS.map((account) => (
-                <button
-                  key={account.email}
-                  type="button"
-                  className="login-demo-btn"
-                  disabled={busy}
-                  onClick={() => fillDemoAccount(account.email)}
-                >
-                  {account.label}
-                </button>
-              ))}
-            </div>
-            <p className="login-demo-maintenance">
-              <Link to="/sop-checklist">Maintenance checklist (JP, PIN 7777)</Link>
-            </p>
-          </div>
-        )}
-        {isProduction && (
-          <p className="login-demo-maintenance">
-            <Link to="/sop-checklist">Staff opening checklist</Link>
-          </p>
-        )}
+        <p className="login-demo-maintenance">
+          <Link to="/sop-checklist">Staff opening checklist</Link>
+        </p>
       </form>
     </div>
   );

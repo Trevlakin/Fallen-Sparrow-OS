@@ -8,6 +8,16 @@ import { logger } from "./utils/logger.js";
 
 function getAllowedWebOrigins(): Set<string> {
   const origins = new Set<string>([env.WEB_APP_URL]);
+  try {
+    const u = new URL(env.WEB_APP_URL);
+    if (u.hostname.startsWith("www.")) {
+      origins.add(`${u.protocol}//${u.hostname.slice(4)}`);
+    } else {
+      origins.add(`${u.protocol}//www.${u.hostname}`);
+    }
+  } catch {
+    /* keep only the configured value */
+  }
   const extra = env.WEB_APP_ALLOWED_ORIGINS?.trim();
   if (extra) {
     for (const part of extra.split(",")) {
