@@ -1,0 +1,9 @@
+# Railway auto-import config for @fallen-sparrow/web (static SPA).
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @fallen-sparrow/shared build && VITE_API_BASE_URL=https://api.fallensparrowos.com pnpm --filter @fallen-sparrow/web build"
+
+[deploy]
+startCommand = "pnpm --filter @fallen-sparrow/web start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

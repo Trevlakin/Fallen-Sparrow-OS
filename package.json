@@ -17,7 +17,7 @@
     "db:local": "pnpm --filter @fallen-sparrow/server db:local",
     "db:setup": "pnpm db:local",
     "deploy": "railway up",
-    "deploy:domain": "bash scripts/connect-domain.sh"
+    "deploy:domain": "bash scripts/connect-domain-railway.sh"
   },
   "engines": {
     "node": ">=22"
