@@ -24,11 +24,29 @@ This guide is for **Legion / Trevor**: connect the Fallen Sparrow monorepo to Ra
 
 | File | Role |
 |------|------|
-| `railway.toml` | Build command, start command, `/health` healthcheck |
+| `railway.toml` (repo root) | Build command, start command, `/health` healthcheck |
+| `server/railway.toml` | Same config for auto-imported `@fallen-sparrow/server` service |
 | `nixpacks.toml` | Node 22 + pnpm; builds `shared` then `server` |
-| Repo root | **Must** be the Railway service root (not `server/` or `web/`) |
+| Repo root | Service root for the API (do **not** set Root Directory to `server/` or `web/`) |
 
 The API listens on Railway's `PORT`. Frontend deploys separately on **Vercel** with root directory **`web`**.
+
+### If Railway created two services (`@fallen-sparrow/server` + `@fallen-sparrow/web`)
+
+Importing a pnpm monorepo can auto-stage one service per workspace package. That is expected Railway behavior, but **only the server belongs on Railway**.
+
+| Service | Action |
+|---------|--------|
+| `@fallen-sparrow/server` | **Keep.** This is the API. |
+| `@fallen-sparrow/web` | **Delete** (Settings → Danger → Delete service). Web has no `start` script and is meant for Vercel. |
+
+After deleting the web service, confirm the server service:
+
+- **Root Directory:** empty (repository root `.`), not `server/` or `web/`
+- **Build / start:** from `railway.toml` or `server/railway.toml` (must build `@fallen-sparrow/shared` before `@fallen-sparrow/server`)
+- **Do not** run a second copy of the API on Railway
+
+Deploy the frontend on [Vercel](#step-7-vercel-frontend-same-github-repo) with root directory `web/`.
 
 ---
 

@@ -1,0 +1,14 @@
+# Railway auto-import reads config from each package directory (not repo root).
+# Keep in sync with root railway.toml so the @fallen-sparrow/server service builds shared first.
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @fallen-sparrow/shared build && pnpm --filter @fallen-sparrow/server build"
+
+[deploy]
+startCommand = "pnpm --filter @fallen-sparrow/server start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[deploy.healthcheck]
+path = "/health"
+timeout = 30
