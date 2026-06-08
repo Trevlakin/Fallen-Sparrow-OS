@@ -5,4 +5,4 @@ set -e
 cd "$(dirname "$0")/.."
 listen_port="${PORT:-4173}"
 
-exec pnpm exec serve dist -s -l "$listen_port"
+exec pnpm exec serve dist -s -l "$listen_port" -c serve.json

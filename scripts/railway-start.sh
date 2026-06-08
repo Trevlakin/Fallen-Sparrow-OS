@@ -11,7 +11,7 @@ echo "Railway start: role=${role}, PORT=${PORT:-unset}"
 
 if [[ "$role" == "web" ]]; then
   echo "Starting SPA (serve)"
-  exec npx serve web/dist -s -l "${PORT:-4173}"
+  exec npx serve web/dist -s -l "${PORT:-4173}" -c web/serve.json
 fi
 
 echo "Starting API (Express)"

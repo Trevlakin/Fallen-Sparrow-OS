@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null,
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png", "offline.html"],
       manifest: {
         name: "Fallen Sparrow",
@@ -37,6 +38,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
