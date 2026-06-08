@@ -73,7 +73,7 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <PwaInstallPrompt />
+      <div className="login-page-stack">
       <form className="login-card" onSubmit={(e) => void handleSubmit(e)}>
         <span className="wordmark">FALLEN SPARROW OPERATING SYSTEM</span>
         <label>
@@ -110,6 +110,8 @@ export function LoginPage() {
           <Link to="/sop-checklist">Staff opening checklist</Link>
         </p>
       </form>
+      <PwaInstallPrompt />
+      </div>
     </div>
   );
 }
