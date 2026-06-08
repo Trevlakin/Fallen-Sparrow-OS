@@ -2,6 +2,24 @@
 
 This guide is for **Legion / Trevor**: connect the Fallen Sparrow monorepo to Railway using **Deploy from GitHub** (no `RAILWAY_TOKEN` required for the first deploy). Custom domains and Vercel are in **`docs/DOMAIN_SETUP.md`**.
 
+## One-page checklist (start here)
+
+**Pushing to GitHub alone does not create a Railway project.** If the dashboard is empty, follow **[`docs/RAILWAY_TROUBLESHOOTING.md`](./RAILWAY_TROUBLESHOOTING.md)** first.
+
+| Step | Action | Done |
+|------|--------|------|
+| 1 | Code on GitHub: [Trevlakin/Fallen-Sparrow-OS](https://github.com/Trevlakin/Fallen-Sparrow-OS) on `main` | ☐ |
+| 2 | Install [Railway GitHub App](https://railway.app/account/connections); grant access to this repo | ☐ |
+| 3 | Railway → **New Project** → **Deploy from GitHub** → select repo; root directory **`.`** | ☐ |
+| 4 | **+ New** → **Database** → **PostgreSQL**; confirm `DATABASE_URL` on API service | ☐ |
+| 5 | Set required env vars (Step 4 below); redeploy | ☐ |
+| 6 | Shell: `pnpm db:migrate` | ☐ |
+| 7 | Custom domain + Vercel (Steps 6–7 below) when ready | ☐ |
+
+**Stuck?** [`docs/RAILWAY_TROUBLESHOOTING.md`](./RAILWAY_TROUBLESHOOTING.md) (empty dashboard, repo not in picker, wrong account).
+
+---
+
 ## What Railway builds
 
 | File | Role |
@@ -186,8 +204,11 @@ bash scripts/railway-github-bootstrap.sh
 
 ## Troubleshooting
 
+**No project in Railway dashboard?** See **[`docs/RAILWAY_TROUBLESHOOTING.md`](./RAILWAY_TROUBLESHOOTING.md)** (GitHub App, Deploy from GitHub, wrong workspace).
+
 | Symptom | What to check |
 |---------|----------------|
+| Empty dashboard after `git push` | You must **Deploy from GitHub** once; push does not auto-create a project |
 | Build fails on Railway | Build logs; run `bash scripts/railway-github-bootstrap.sh --verify-build` locally |
 | Service crashes on start | Deploy logs; missing `JWT_SECRET`, `DATABASE_URL`, or invalid URLs in `APP_BASE_URL` / `WEB_APP_URL` |
 | `/health` 502 | Deploy finished? Postgres reachable? `DATABASE_URL` on API service? |
@@ -198,6 +219,8 @@ bash scripts/railway-github-bootstrap.sh
 
 ## Related docs
 
+- **`docs/RAILWAY_TROUBLESHOOTING.md`**: Empty dashboard, GitHub App, repo access, wrong account
 - **`docs/DOMAIN_SETUP.md`**: GoDaddy DNS, Vercel + Railway domains, smoke tests
+- **`docs/GODADDY_DNS.md`**: GoDaddy copy-paste DNS after Railway/Vercel exist
 - **`DEPLOY.md`**: Short deploy overview
 - **`scripts/connect-domain.sh`**: Token-based full stack + domain hints
