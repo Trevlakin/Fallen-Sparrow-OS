@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.fallensparrowos.com/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://api.fallensparrowos.com/health"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.fallensparrowos.com" }],
+      "destination": "https://fallensparrowos.com/:path*",
+      "permanent": true
+    }
+  ]
+}

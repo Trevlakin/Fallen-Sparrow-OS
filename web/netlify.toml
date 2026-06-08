@@ -1,0 +1,9 @@
+[build]
+  base = "web"
+  command = "cd .. && pnpm install --frozen-lockfile && pnpm --filter @fallen-sparrow/shared build && pnpm --filter @fallen-sparrow/web build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

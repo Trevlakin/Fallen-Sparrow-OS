@@ -1,0 +1,97 @@
+---
+description: Architecture and code-discipline spine for Fallen Sparrow. Enforces strict layering, single sources of truth, and integration boundaries to prevent spaghetti code, crossed wires, and technical debt. Applies to every file.
+alwaysApply: true
+---
+
+# ARCHITECTURE SPINE — NON-NEGOTIABLE STRUCTURE
+
+This rule exists to guarantee a clean foundation: strict layers, one-way dependencies, single
+sources of truth, and hard boundaries around every external service. Follow it on EVERY file.
+If a change would violate a boundary, stop and restructure — do not "just make it work."
+
+## THE LAYERS (STRICT, ONE-WAY FLOW)
+
+```
+HTTP request
+  → route        (HTTP only: parse request, call controller, shape response. NO logic, NO db.)
+  → controller   (thin orchestration: Zod-validate input, call service(s), map result to response)
+  → service      (ALL business logic. Pure-ish, testable. Never imports routes/controllers. Never touches req/res.)
+  → repo         (ALL database access via Drizzle. The ONLY layer allowed to import schema/db.)
+  → db
+```
+
+**Dependency direction is one-way and downward.** A layer may only import the layer directly
+below it (and `shared/`). NEVER:
+- a route or controller querying the DB directly (must go through a repo)
+- a service importing a route/controller, or reading `req`/`res`
+- a repo containing business logic
+- any circular import between modules
+
+If you catch yourself writing a Drizzle query inside a route or controller, STOP — move it to a repo.
+If you catch business logic inside a route or repo, STOP — move it to a service.
+
+## SINGLE SOURCES OF TRUTH (NO CROSSED WIRES)
+
+- **Environment variables:** accessed ONLY through `config/env.ts`, which Zod-validates all env at
+  boot and FAILS FAST if anything is missing or malformed. NEVER read `process.env.X` anywhere else
+  in the codebase. Import the typed config object instead.
+- **Database schema:** lives ONLY in `shared/schema.ts`. Derive types from Drizzle's `$inferSelect`/
+  `$inferInsert` — do not hand-write duplicate types.
+- **Business constants** (expense categories, GL mapping, confidence threshold, nudge rules): live
+  ONLY in `shared/constants.ts`. Never duplicate a category string or threshold anywhere.
+- **Runtime/business settings** (commission rates, bonus amounts): live in the `settings` table,
+  read through a single settings service. Never hardcoded.
+
+## INTEGRATION BOUNDARIES (ONE DOOR PER VENDOR)
+
+Each external service gets exactly ONE integration module under `server/integrations/`. Nothing
+outside that module may import the vendor SDK or know the vendor's data shape.
+
+| Vendor | The only module allowed to call it |
+|---|---|
+| Anthropic Claude | `integrations/anthropic.ts` |
+| Porter (CSV/API) | `integrations/porterIngestion.ts` (via `PorterIngestionService`) |
+| QuickBooks Online | `integrations/quickbooks.ts` |
+| Twilio | `integrations/twilio.ts` |
+| Resend | `integrations/resend.ts` |
+| Cloudflare R2 | `integrations/storage.ts` |
+
+Services call these modules through small, typed interfaces — they receive normalized data, never
+raw vendor payloads. This is what makes the vendors swappable and the wiring un-crossable. (Porter
+especially: everything downstream consumes `NormalizedPorterAppointment`, never a CSV row.)
+
+## VALIDATION AT EVERY BOUNDARY
+
+Trust nothing that crosses into the system. Zod-validate and coerce at each edge:
+- incoming API request bodies/params (in the controller)
+- AI model output (after `JSON.parse`, before use)
+- Porter CSV rows (in `mapPorterRow()`)
+- environment (in `config/env.ts`)
+
+## ERROR HANDLING (UNIFORM)
+
+- One `AppError` class (in `utils/errors.ts`) with a status code and a safe message.
+- Services throw typed `AppError`s. Integration modules catch vendor errors and rethrow as `AppError`.
+- ONE global Express error middleware formats the response. Do NOT scatter ad-hoc `try/catch` that
+  swallows errors or returns inconsistent shapes.
+- No floating promises. `await` everything; no unhandled rejections.
+
+## NAMING & EXPORTS
+
+- **Named exports only. No default exports** (keeps renames safe and imports greppable).
+- One primary responsibility per file. Soft cap ~300–400 lines — past that, split by responsibility.
+- TypeScript strict. **No `any`** — use `unknown` + narrowing, or a real type.
+- Match the reference codebase's file naming (camelCase: `revenueRepo.ts`, `artistAnalytics.ts`).
+
+## DATABASE & MIGRATIONS
+
+- Schema changes happen ONLY through Drizzle Kit migrations, committed to git.
+- NEVER `db push` against production. NEVER hand-write ad-hoc SQL migrations.
+- Every tenant-scoped query filters on the tenant key — enforced in the repo layer, not per-call.
+
+## ANTI-DEBT RULES
+
+- Don't port reference code you don't use — no dead code from GCOps/B.O.S.S. carried along.
+- Rule of three: don't abstract until a pattern repeats 3×; but don't copy-paste a 3rd time either.
+- Every new service gets unit tests; every new route gets an integration test (v2 §10).
+- If two pieces of code need the same value, they import it from one place — they never each define it.

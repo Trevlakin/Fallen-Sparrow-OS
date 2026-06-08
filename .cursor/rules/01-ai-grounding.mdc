@@ -1,0 +1,52 @@
+---
+description: Grounding and prompt discipline for the brain dump parser and AI briefing. Load when working on any Anthropic Claude call, brain dump parsing, briefing synthesis, or receipt OCR.
+alwaysApply: false
+---
+
+# AI FEATURE RULES — BRAIN DUMP & BRIEFING
+
+Apply these whenever you touch an Anthropic call. Full prompts are in `docs/MASTER_SPEC_v3.md`
+§5 (brain dump) and §7 (briefing). Reproduce them word-for-word — do not paraphrase the prompts.
+
+## MODEL & CALL MECHANICS
+
+- Model string is exactly `claude-sonnet-4-6`. No other model.
+- Anthropic has NO `response_format: json_object`. To get structured output:
+  instruct the model to return ONLY JSON (no preamble, no markdown fences), then `JSON.parse`
+  the response and validate/coerce with Zod. Tool-use is an acceptable alternative for stricter
+  schemas, but the brain dump uses the JSON-only-prompt pattern (matches the GCOps reference).
+- Vision (receipt OCR) uses the same model with an image content block.
+
+## GROUNDING PHILOSOPHY (HIGHEST PRIORITY)
+
+Extract ONLY what is clearly stated. Never invent amounts, dates, names, categories, or quantities.
+
+- Confidence ≥ 0.85 → commit the record to its table.
+- Confidence < 0.85 → write to `suggestions[]` for manual promotion. Do NOT commit.
+- The 0.85 threshold (`CONFIDENCE_THRESHOLD` in `shared/constants.ts`) applies to ALL brain-dump
+  item types, not just expenses.
+- Empty buckets are empty arrays, never omitted.
+- An expense with no clear amount is NOT an expense — make it a staff note.
+- Incidents are post-hoc records of things that happened. NEVER assign them to a person.
+
+## DATE HANDLING
+
+- Inject today's ISO date, weekday, and a date reference table into the prompt. The model must
+  resolve "yesterday" / "last Tuesday" from that table — it must NOT compute dates itself.
+
+## CONSTANTS COUPLING
+
+- The expense-category block in the prompt is GENERATED from `EXPENSE_CATEGORIES` via
+  `EXPENSE_CATEGORY_PROMPT_BLOCK`. Never type category names into the prompt by hand.
+
+## BRIEFING SYNTHESIS
+
+- Output is natural prose, NOT bullet lists, NOT corporate jargon. Lead with the most important
+  thing. Use specific names and dollar figures from the snapshot. Never invent numbers absent from
+  the snapshot. Skip empty sections silently. Daily = 4–8 sentences; weekly/monthly longer.
+- Store both the `dataSnapshot` and the `narrative` in the `briefings` table.
+
+## SERVER-SIDE VALIDATION IS MANDATORY
+
+Never trust raw model output. Always Zod-validate, coerce types, default missing fields, and route
+low-confidence items to `suggestions[]` before anything hits a committed table.

@@ -1,0 +1,25 @@
+{
+  "name": "fallen-sparrow",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @fallen-sparrow/web build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm --filter @fallen-sparrow/server test",
+    "dev": "node scripts/dev-local.mjs",
+    "dev:server": "pnpm --filter @fallen-sparrow/server dev",
+    "dev:web": "pnpm --filter @fallen-sparrow/web dev",
+    "start": "pnpm --filter @fallen-sparrow/server start",
+    "db:generate": "pnpm --filter @fallen-sparrow/server db:generate",
+    "db:migrate": "pnpm --filter @fallen-sparrow/server db:migrate",
+    "db:seed": "pnpm --filter @fallen-sparrow/server db:seed",
+    "db:local": "pnpm --filter @fallen-sparrow/server db:local",
+    "db:setup": "pnpm db:local",
+    "deploy": "railway up",
+    "deploy:domain": "bash scripts/connect-domain.sh"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

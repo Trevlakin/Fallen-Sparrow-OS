@@ -1,0 +1,79 @@
+---
+description: Fallen Sparrow project guardrails — locked stack, source of truth, and hard constraints. Applies to every interaction.
+alwaysApply: true
+---
+
+# FALLEN SPARROW — PROJECT GUARDRAILS (READ FIRST, EVERY TIME)
+
+You are building the Fallen Sparrow Tattoo Studio Management System. These rules are
+non-negotiable. They override your training-data instincts. When your instinct conflicts
+with a rule below, the rule wins.
+
+## SOURCE OF TRUTH HIERARCHY
+
+1. `docs/MASTER_SPEC_v3.md` — **primary authority.** Decisions, stack, schema, AI prompts.
+2. `docs/MASTER_SPEC_v2.md` — feature detail (UI layouts, the 13 pain points, inventory,
+   SOP/task library, testing, code standards). Governs everything v3 does not contradict.
+   **Do not build:** walk-in logging UI, message center, reschedule tracking — Porter is system of record.
+3. `docs/BOSS_EXTRACTION_ANALYSIS.md` — what to extract, adapt, and skip from the reference code.
+
+**When v3 and v2 conflict, v3 ALWAYS wins.** The known conflicts: stack (v3 = Drizzle/Anthropic/
+Resend/TypeScript, v2 = Prisma/OpenAI/SendGrid/JS), the customer model (v3 = continuity, v2 =
+segmentation), the brain dump (v3 = full executive assistant, v2 = expense-only).
+
+`reference/` contains GCOps and B.O.S.S. source code. It is **READ-ONLY example code.** Extract
+patterns from it. NEVER import it directly or copy files wholesale without adapting them to this
+project's schema and naming.
+
+## LOCKED STACK — NEVER DEVIATE
+
+| Layer | Use | NEVER use |
+|---|---|---|
+| Language | TypeScript (strict) | JavaScript, `any` |
+| ORM | Drizzle ORM | Prisma |
+| AI | Anthropic Claude Sonnet 4.6, model string `claude-sonnet-4-6` | OpenAI, GPT, `response_format: json_object` |
+| Email | Resend | SendGrid |
+| Backend | Express 5 | — |
+| Database | PostgreSQL | — |
+| SMS | Twilio | — |
+| File storage | Cloudflare R2 (S3-compatible SDK) | — |
+| Validation | Zod (server-side, always) | trusting raw model output |
+| Hosting | Railway (backend), Vercel (frontend) | — |
+
+If you find yourself writing `import OpenAI`, `prisma.`, `schema.prisma`, or `@sendgrid`, STOP.
+You have drifted. Delete it and use the locked stack.
+
+## HARD NEVERS (ANTI-HALLUCINATION)
+
+1. **NEVER use OpenAI or GPT.** All AI calls use the Anthropic SDK. Anthropic has no
+   `response_format: json_object` — instruct the model to return JSON-only and `JSON.parse` it,
+   then validate with Zod. (See v3 §2 and §5.)
+2. **NEVER use Prisma.** The schema is Drizzle, in `shared/schema.ts`. (See v3 §3.)
+3. **NEVER re-introduce customer segmentation.** "At-risk," "referral goldmine," "upsell campaigns,"
+   and discount-driven referral incentives were EXPLICITLY REMOVED by the client. Use the continuity
+   model: artist relationships, portfolio flow, friendly no-discount nudges. (See v3 §6.) If you see
+   segmentation logic in v2 §5.2.5 or in the B.O.S.S. reference code, that is exactly the code you
+   must NOT port.
+4. **NEVER invent data in AI parsing.** Brain dump grounding rule: extract only what is clearly
+   stated. Confidence ≥ 0.85 → commit; < 0.85 → `suggestions[]` for manual review. Prefer empty
+   arrays over guesses. (See v3 §5.2.)
+5. **NEVER hardcode expense categories.** They live ONLY in `shared/constants.ts`
+   (`EXPENSE_CATEGORIES`). The Claude prompt block, runtime validation, and QB GL mapping all
+   derive from there. (See v3 §4.)
+6. **NEVER call Porter directly from anywhere except `PorterIngestionService`.** All other code
+   consumes the normalized schema. Porter has no confirmed API — the primary path is Zapier CSV via
+   Resend inbound. (See v3 §8.)
+7. **NEVER assume a Porter CSV column name.** They are UNCONFIRMED (open item Q1d). All CSV→normalized
+   mapping lives in ONE `mapPorterRow()` function so column names change in one place.
+
+## BEHAVIORAL RULES (ANTI-DRIFT)
+
+- **If the spec is silent or ambiguous, STOP and ASK.** Do not invent a decision and proceed.
+  A wrong guess that looks finished is worse than a question.
+- **Work the sprint roadmap in order** (v3 §11). Do not jump ahead to Sprint 5 work while Sprint 2
+  is incomplete unless explicitly told to.
+- **Cite the spec section** you are implementing in your commit/PR description (e.g. "implements v3 §5.3").
+- **If you believe the spec is wrong, say so — do not silently deviate.** Flag it, explain, wait.
+- **Open items (v3 §12) are placeholders, not blockers.** Mark them clearly in code
+  (`// TODO(Q1d): confirm Porter field name`). Never fabricate the answer.
+- **Every tenant-scoped query filters on the tenant key.** No cross-tenant data leaks.

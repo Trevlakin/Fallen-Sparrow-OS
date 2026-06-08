@@ -1,0 +1,3 @@
+appointment_id,client_id,client_name,artist_id,artist_name,service_type,deposit_amount,final_amount,tip_amount,total_revenue,appointment_date,completed_date,status,payment_method,notes,walk_in_greeted_by
+appt-001,client-001,Jane Doe,porter-artist-001,Carlos Mendez,tattoo,50,450,50,550,2026-05-20T14:00:00Z,2026-05-20T18:00:00Z,completed,card,Back piece session 1,
+appt-002,client-002,John Smith,porter-artist-002,Riley Stone,piercing,0,80,10,90,2026-05-21T11:00:00Z,2026-05-21T11:30:00Z,completed,card,,

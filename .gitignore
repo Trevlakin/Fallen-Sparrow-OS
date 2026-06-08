@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test / coverage
+coverage/
+
+# Local embedded Postgres (no Docker)
+server/.pgdata/
+server/.data/
+
+# Drizzle
+# Keep migrations committed; ignore local drizzle state if any
+
+# Reference code (read-only, large)
+reference/
+
+# Sentry
+.sentryclirc

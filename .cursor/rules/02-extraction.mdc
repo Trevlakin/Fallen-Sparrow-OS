@@ -1,0 +1,42 @@
+---
+description: Discipline for extracting and adapting code from the GCOps and B.O.S.S. reference codebases. Load when porting metrics, payroll, profit, or financial logic from reference/.
+alwaysApply: false
+---
+
+# EXTRACTION RULES — REFERENCE CODE (GCOps & B.O.S.S.)
+
+`reference/` is READ-ONLY example code. The full map is in `docs/BOSS_EXTRACTION_ANALYSIS.md`.
+
+## EXTRACT + ADAPT (these patterns are good)
+
+- `reference/boss-source/server/routes/metrics.ts` → daily/weekly/monthly aggregation.
+  ADAPT: group by **artist + service type**, not by "product." Add margin calculation.
+- `reference/boss-source/server/routes/payroll.ts` → labor cost tracking.
+  ADAPT: drive commission from `appointmentPayments`, not manual monthly entry (keep manual as fallback).
+- `reference/boss-source/server/lib/profit.ts` → margin math. ADAPT defaults to tattoo service types.
+- `reference/boss-source/server/repos/revenueRepo.ts` → financial query patterns.
+- `reference/boss-source/server/middleware/` (tenant enforcement), `db.ts`, `auth.ts` → take largely as-is.
+- `reference/gcops-source` brain dump → the Anthropic SDK + JSON-only + grounding patterns.
+
+## SKIP ENTIRELY (do NOT port)
+
+- `outreach.ts`, `coaching.ts` — customer segmentation / B2B sales outreach. FORBIDDEN (see guardrails #3).
+- `services/mission.ts`, `services/smartMixV2.ts`, `lib/hormozi.ts`, `lib/cycles.ts` — sales-coaching logic.
+- All achievement / fingerprint / gamification tables — B2B anti-fraud, irrelevant here.
+
+## BUILD NEW (no reference exists — write from v3 spec)
+
+- `services/artistAnalytics.ts` — artist performance (v3 §6.1)
+- `services/customerContinuity.ts` — portfolio + gap tracking (v3 §6.2)
+- `services/communityNudges.ts` — friendly nudges, no discounts (v3 §6.3)
+- `services/referralTracking.ts` — organic referral graph (v3 §6.4)
+- `services/briefingSynthesis.ts` — daily/weekly/monthly briefing (v3 §7)
+- `integrations/porterIngestion.ts` — `PorterIngestionService` (v3 §8)
+
+## ADAPTATION RULES
+
+- Reference code may use different table/column names. Always remap to THIS project's
+  `shared/schema.ts`. Never leave a B.O.S.S. or GCOps table name in the Fallen Sparrow codebase.
+- Reference code may use older model strings or OpenAI. Replace with `claude-sonnet-4-6` / Anthropic.
+- When in doubt about whether a reference pattern applies, check the extraction analysis doc first,
+  then ask. Do not port speculatively.

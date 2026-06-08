@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0A0A0A" />
+    <title>Offline | Fallen Sparrow</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0a0a0a;
+        color: #f9fafb;
+        font-family: system-ui, sans-serif;
+      }
+      .card {
+        text-align: center;
+        padding: 2rem;
+        max-width: 360px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      p {
+        color: #9ca3af;
+        line-height: 1.5;
+      }
+      button {
+        background: #f59e0b;
+        color: #0a0a0a;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .wordmark {
+        color: #f59e0b;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="wordmark">FALLEN SPARROW</div>
+      <h1>You are offline</h1>
+      <p>Check your connection and try again.</p>
+      <button type="button" onclick="window.location.reload()">Retry</button>
+    </div>
+  </body>
+</html>
