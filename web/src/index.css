@@ -358,7 +358,7 @@ textarea {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 400px;
+  max-width: 540px;
   gap: 1.25rem;
 }
 
@@ -399,7 +399,7 @@ textarea {
 
 .login-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 540px;
   background: var(--card);
   border: 1px solid var(--border);
   padding: 2rem;
@@ -412,8 +412,9 @@ textarea {
 .login-card .wordmark {
   font-family: var(--font-display);
   font-size: 1.6rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .login-card label {
