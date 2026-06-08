@@ -5,8 +5,8 @@ import { ApiError } from "@/lib/api";
 import { DATABASE_UNAVAILABLE_MESSAGE } from "@/lib/authMessages";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
-const STARTUP_RETRY_MS = 2_000;
-const STARTUP_MAX_ATTEMPTS = 5;
+const STARTUP_RETRY_MS = 3_000;
+const STARTUP_MAX_ATTEMPTS = 20;
 
 export function LoginPage() {
   const { user, login, loading, sessionError, clearSessionError } = useAuth();
