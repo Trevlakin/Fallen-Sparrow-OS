@@ -37,8 +37,13 @@ $RAILWAY link 2>/dev/null || true
 $RAILWAY up --detach
 
 echo "==> Server env vars"
+POSTGRES_REF="${RAILWAY_POSTGRES_REF:-Postgres}"
 $RAILWAY variables set \
   "NODE_ENV=production" \
+  "FS_ROLE=server" \
+  "DATABASE_URL=\${{${POSTGRES_REF}.DATABASE_URL}}" \
+  "OWNER_SEED_EMAIL=${OWNER_SEED_EMAIL:-admin@fallensparrowos.com}" \
+  "OWNER_SEED_PASSWORD=${OWNER_SEED_PASSWORD:-ChangeMe123!}" \
   "APP_BASE_URL=${API_URL}" \
   "WEB_APP_URL=${APP_URL}" \
   "WEB_APP_ALLOWED_ORIGINS=https://www.${DOMAIN}" \

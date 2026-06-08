@@ -21,16 +21,49 @@ run_with_timeout() {
   fi
 }
 
+database_url_hint() {
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "unset"
+    return
+  fi
+  if [[ "${DATABASE_URL}" == *'${{'* ]]; then
+    echo "literal Railway template (use Variables → Add Reference → Postgres DATABASE_URL)"
+    return
+  fi
+  if [[ "${DATABASE_URL}" == postgres://* || "${DATABASE_URL}" == postgresql://* ]]; then
+    echo "set (postgres URL)"
+    return
+  fi
+  echo "set but not a postgres URL (check Railway reference)"
+}
+
 run_db_setup() {
   set +e
 
-  echo "Railway boot: running database migrations..."
-  run_with_timeout 120 pnpm db:migrate
-  local migrate_status=$?
-  if [[ $migrate_status -eq 0 ]]; then
-    echo "Railway boot: migrations complete"
-  else
-    echo "Railway boot: WARNING migrations failed (exit ${migrate_status}; check DATABASE_URL=${DATABASE_URL:+set}${DATABASE_URL:-unset} and Postgres service)"
+  echo "Railway boot: DATABASE_URL is $(database_url_hint)"
+  if [[ -n "${DATABASE_URL:-}" && "${DATABASE_URL}" == *'${{'* ]]; then
+    echo "Railway boot: FATAL unresolved DATABASE_URL template. Fix in Railway dashboard, then redeploy."
+    echo "Railway boot: See scripts/railway-fix-db.sh or docs/RAILWAY_ENV_VARS.md"
+    return 1
+  fi
+
+  local migrate_ok=0
+  local attempt
+  for attempt in $(seq 1 20); do
+    echo "Railway boot: running database migrations (attempt ${attempt}/20)..."
+    run_with_timeout 120 pnpm db:migrate
+    local migrate_status=$?
+    if [[ $migrate_status -eq 0 ]]; then
+      echo "Railway boot: migrations complete"
+      migrate_ok=1
+      break
+    fi
+    echo "Railway boot: migrations failed (exit ${migrate_status}); retrying in 5s..."
+    sleep 5
+  done
+
+  if [[ $migrate_ok -ne 1 ]]; then
+    echo "Railway boot: WARNING migrations did not succeed after 20 attempts (check Postgres service and DATABASE_URL reference)"
   fi
 
   if [[ -n "${OWNER_SEED_EMAIL:-}" && -n "${OWNER_SEED_PASSWORD:-}" ]]; then

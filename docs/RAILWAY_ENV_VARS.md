@@ -54,6 +54,12 @@ Initial: `admin@fallensparrowos.com` / `ChangeMe123!` (Legion should change this
 in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth callbacks will fail.
 - **QBO_REALM_ID**: Leave blank until QuickBooks OAuth is connected in production.
 - **JWT_SECRET**: Freshly rotated on 2026-06-08. The old value is invalidated.
+- **Fix script (CLI):** With `RAILWAY_TOKEN` in `.env`, run `bash scripts/railway-fix-db.sh` to link
+  `DATABASE_URL`, redeploy, and run migrations. Use `RAILWAY_POSTGRES_REF` if your Postgres plugin
+  is not named `Postgres` (check the service name on the Railway canvas).
+- **Readiness check:** `GET /health/ready` returns `503` until Postgres accepts connections and
+  migrations have created the schema (same signal as login 503, but safe for monitoring).
+
 
 ---
 

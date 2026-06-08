@@ -4,6 +4,7 @@ import { apiRouter } from "./routes/index.js";
 import { porterWebhookRouter } from "./routes/porter.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { hasWebhookSecret } from "./integrations/resend.js";
+import { getReady } from "./controllers/healthController.js";
 import { logger } from "./utils/logger.js";
 
 function getAllowedWebOrigins(): Set<string> {
@@ -55,6 +56,8 @@ export function createApp(): Express {
       environment: env.NODE_ENV,
     });
   });
+
+  app.get("/health/ready", getReady);
 
   if (!hasWebhookSecret()) {
     logger.warn(

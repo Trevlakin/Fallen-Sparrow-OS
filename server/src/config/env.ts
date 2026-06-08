@@ -62,7 +62,28 @@ const optionalSprintSchema = z.object({
   SEED_DEMO_USERS: z.string().optional(),
 });
 
-const envSchema = baseSchema.merge(optionalSprintSchema);
+const envSchema = baseSchema.merge(optionalSprintSchema).superRefine((data, ctx) => {
+  if (data.NODE_ENV !== "production") {
+    return;
+  }
+  const url = data.DATABASE_URL;
+  if (url.includes("${{")) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["DATABASE_URL"],
+      message:
+        "DATABASE_URL is a literal Railway template. In Railway Variables, use Add Reference to your Postgres service DATABASE_URL (not pasted text).",
+    });
+  }
+  if (!/^postgres(ql)?:\/\//.test(url)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["DATABASE_URL"],
+      message:
+        "DATABASE_URL must start with postgres:// or postgresql:// in production.",
+    });
+  }
+});
 
 function parseEnv(): z.infer<typeof envSchema> {
   const raw = { ...process.env };
