@@ -17,7 +17,7 @@ The API listens on Railway's `PORT`. Frontend deploys separately on **Vercel** w
 ## Prerequisites
 
 1. **GitHub repository** with at least one commit on `main` (or your default branch).
-2. **Railway account** linked to GitHub ([railway.app](https://railway.app)).
+2. **Railway account** linked to GitHub ([railway.app](https://railway.app)) with access to **Trevlakin/Fallen-Sparrow-OS**.
 3. Secrets ready to paste into Railway Variables (copy names from `.env.example`; values from local `.env`, never commit `.env`).
 
 ### Local verify (recommended)
@@ -42,15 +42,13 @@ pnpm build
 
 ### Option A: GitHub website
 
-1. [github.com/new](https://github.com/new) → create repo (e.g. `fallen-sparrow-os`), private recommended.
-2. Locally:
+1. **Live repo:** [github.com/Trevlakin/Fallen-Sparrow-OS](https://github.com/Trevlakin/Fallen-Sparrow-OS) (`main`, commit on `origin`).
+
+For a fresh clone or second machine:
 
 ```bash
-git add -A
-git commit -m "Initial Fallen Sparrow monorepo"
-git branch -M main
-git remote add origin git@github.com:YOUR_ORG/fallen-sparrow-os.git
-git push -u origin main
+git clone https://github.com/Trevlakin/Fallen-Sparrow-OS.git
+cd Fallen-Sparrow-OS
 ```
 
 ### Option B: GitHub CLI (`gh`)
