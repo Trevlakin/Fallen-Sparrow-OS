@@ -3,6 +3,7 @@
 set -e
 
 cd "$(dirname "$0")/.."
+web_dir="$(pwd)"
 listen_port="${PORT:-4173}"
 
-exec pnpm exec serve dist -s -l "$listen_port" -c serve.json
+exec pnpm exec serve dist -s -l "$listen_port" -c "${web_dir}/serve.json"
