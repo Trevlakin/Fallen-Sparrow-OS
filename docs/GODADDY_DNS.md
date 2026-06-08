@@ -10,14 +10,66 @@ Copy-paste guide for pointing **FallenSparrowOS.com** at Vercel (frontend) and R
 
 | Check | Result |
 |-------|--------|
+| Railway `@fallen-sparrow/server` | **ONLINE** (auto-generated Railway domain active) |
+| Railway custom domain `api.fallensparrowos.com` | **Not yet added** (need RAILWAY_TOKEN or dashboard step) |
+| Railway migrations (`pnpm db:migrate`) | **Not yet run** (need Railway shell or token) |
+| Vercel frontend deploy | **Not yet deployed** (need VERCEL_TOKEN or dashboard import) |
+| Web frontend build (`web/dist/`) | **Confirmed working** (353 modules, 1.5 MB, built 2026-06-08) |
 | `fallensparrowos.com` A | `13.248.243.5`, `76.223.105.230` (GoDaddy parking, **not** Vercel) |
-| `www` | CNAME → `fallensparrowos.com` (GoDaddy default) |
-| `api.fallensparrowos.com` | **No DNS record** (does not resolve) |
-| HTTPS on apex | GoDaddy DPS parking page (`Server: DPS/2.0.0`) |
-| Vercel domain verification | No `_vercel` TXT record found |
-| `RAILWAY_TOKEN` / `VERCEL_TOKEN` in local `.env` | **Not set** (dashboard deploy path required) |
+| `www` | CNAME to `fallensparrowos.com` (GoDaddy default) |
+| `api.fallensparrowos.com` | **No DNS record** (does not resolve yet) |
+| `RAILWAY_TOKEN` / `VERCEL_TOKEN` in local `.env` | **Not set** - see "Fastest path to deploy" below |
 
-**Blockers before DNS will work:** deploy API on Railway, deploy frontend on Vercel, add custom domains in both dashboards, then replace GoDaddy parking records below.
+**Two blockers remain before DNS will work:**
+1. Add `api.fallensparrowos.com` custom domain in Railway and get its CNAME target
+2. Deploy the frontend to Vercel and add `fallensparrowos.com` + `www.fallensparrowos.com`
+
+---
+
+## Fastest path to deploy (one-shot script)
+
+Once you have both tokens, a single script handles Railway domain, migrations, Vercel deploy, and env vars:
+
+**Step 1 - Get Railway token:**
+1. Go to [railway.com/account/tokens](https://railway.com/account/tokens)
+2. Click **New Token**, name it "fallen-sparrow-deploy", copy the value
+3. Add to `.env`: `RAILWAY_TOKEN=your_token_here`
+
+**Step 2 - Get Vercel token:**
+1. Go to [vercel.com/account/tokens](https://vercel.com/account/tokens)
+2. Click **Create**, name it "fallen-sparrow-deploy", copy the value
+3. Add to `.env`: `VERCEL_TOKEN=your_token_here`
+
+**Step 3 - Run the script:**
+```bash
+cd "/Users/trevorl/Desktop/Cursor Projects/Fallen Sparrow Holy SHIT package"
+bash scripts/connect-domain.sh
+```
+
+The script will: build, deploy to Railway, run migrations, set production env vars, deploy frontend to Vercel, add custom domains, and print the final DNS table.
+
+---
+
+## Manual deploy path (no tokens - Railway dashboard)
+
+If you prefer not to use tokens, follow these steps in order:
+
+### Railway (api.fallensparrowos.com)
+
+1. Go to [railway.app](https://railway.app) → project → **@fallen-sparrow/server** service
+2. **Shell tab** → run: `pnpm db:migrate`
+3. **Settings** → **Networking** → **Generate Domain** (if no URL yet) → note the `*.up.railway.app` URL
+4. **Settings** → **Networking** → **Custom Domain** → enter `api.fallensparrowos.com` → Railway shows a CNAME target like `something.up.railway.app` - **copy that value**
+5. **Variables** → confirm `APP_BASE_URL=https://api.fallensparrowos.com` and `WEB_APP_URL=https://fallensparrowos.com`
+
+### Vercel (fallensparrowos.com)
+
+1. Go to [vercel.com/new](https://vercel.com/new) → **Import Git Repository** → `Trevlakin/Fallen-Sparrow-OS`
+2. **Root Directory**: set to `web`
+3. **Framework**: Vite (auto-detected)
+4. **Environment Variables**: add `VITE_API_BASE_URL` = (leave blank/empty)
+5. Click **Deploy** - wait for build (the `web/dist/` was pre-verified working)
+6. After deploy: **Settings** → **Domains** → add `fallensparrowos.com` and `www.fallensparrowos.com`
 
 ---
 

@@ -14,7 +14,7 @@ NODE_ENV=production
 JWT_SECRET=93feed4044a68f9db354b91d243abcdb6b4a1a90b58e9bf601ed4398938e311c
 JWT_EXPIRES_IN=7d
 BCRYPT_ROUNDS=12
-APP_BASE_URL=https://fallensparrowos.com
+APP_BASE_URL=https://api.fallensparrowos.com
 WEB_APP_URL=https://fallensparrowos.com
 DEFAULT_TIMEZONE=America/New_York
 DATABASE_URL=${{Postgres.DATABASE_URL}}
@@ -32,19 +32,15 @@ QBO_REALM_ID=
 ## Notes
 
 - **DATABASE_URL**: Do NOT paste a plain connection string. In Railway, click "Add Variable", set
-  the key to `DATABASE_URL`, and set the value to the reference `${{Postgres.DATABASE_URL}}`.
-  This ensures Railway automatically injects the correct internal Postgres URL.
-
+the key to `DATABASE_URL`, and set the value to the reference `${{Postgres.DATABASE_URL}}`.
+This ensures Railway automatically injects the correct internal Postgres URL.
 - **ANTHROPIC_API_KEY**: This key was previously exposed in a chat log. You should rotate it at
-  [console.anthropic.com](https://console.anthropic.com) and update this value (and Railway) with
-  the new key as soon as possible.
-
-- **APP_BASE_URL / WEB_APP_URL**: Currently set to `https://fallensparrowos.com` as a placeholder.
-  Update once the domain is fully live and pointed at Railway.
-
+[console.anthropic.com](https://console.anthropic.com) and update this value (and Railway) with
+the new key as soon as possible.
+- **APP_BASE_URL**: Set to `https://api.fallensparrowos.com` (the API server's own base URL, used for OAuth callbacks and CORS). Update only if the Railway custom domain changes.
+- **WEB_APP_URL**: Set to `https://fallensparrowos.com` (the Vercel-hosted frontend). Used for CORS allowed origins and redirect URLs.
 - **QBO_REDIRECT_URI**: Updated from localhost to the production URL. Ensure this URI is registered
-  in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth callbacks will fail.
-
+in your QuickBooks Developer app settings (Intuit Developer Portal) or OAuth callbacks will fail.
 - **QBO_REALM_ID**: Leave blank until QuickBooks OAuth is connected in production.
-
 - **JWT_SECRET**: Freshly rotated on 2026-06-08. The old value is invalidated.
+
