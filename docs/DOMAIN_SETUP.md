@@ -1,6 +1,24 @@
 # FallenSparrowOS.com — Domain + Production Setup
 
-Connect **FallenSparrowOS.com** (GoDaddy) to the live app:
+Connect **FallenSparrowOS.com** (GoDaddy) to the live app.
+
+**GoDaddy click-by-click DNS:** see **`docs/GODADDY_DNS.md`** (screenshot-friendly tables and delete-conflicts checklist).
+
+## Live status snapshot (2026-06-08)
+
+| Item | Status |
+|------|--------|
+| GitHub `Trevlakin/Fallen-Sparrow-OS` | Pushed (`main`) |
+| `fallensparrowos.com` DNS | GoDaddy parking A (`13.248.243.5`, `76.223.105.230`), **not** Vercel |
+| `www.fallensparrowos.com` | CNAME → apex (parking) |
+| `api.fallensparrowos.com` | **Missing** (NXDOMAIN) |
+| Railway API | Not confirmed live (no custom domain; default `*.up.railway.app` URL unknown) |
+| Vercel frontend | Custom domain not configured (no `_vercel` TXT) |
+| Local `.env` deploy tokens | `RAILWAY_TOKEN` and `VERCEL_TOKEN` **not** set |
+
+**To go live:** Railway + Vercel deploy first → add custom domains in each dashboard → update GoDaddy per **`docs/GODADDY_DNS.md`**.
+
+---
 
 | Host | Service | Purpose |
 |------|---------|---------|
@@ -102,21 +120,23 @@ bash scripts/deploy-production.sh
 
 ## Step 5 — GoDaddy DNS records
 
-Log in at [godaddy.com](https://www.godaddy.com) → **My Products** → **FallenSparrowOS.com** → **DNS** → **Manage DNS**.
+**Full walkthrough:** **`docs/GODADDY_DNS.md`**.
 
-Add or update these records (use exact targets Vercel/Railway show in their dashboards if they differ):
+Summary (use exact targets Vercel/Railway show if they differ):
 
 | Type | Name | Value | TTL |
 |------|------|-------|-----|
 | **A** | `@` | `76.76.21.21` | 600 (Vercel apex) |
 | **CNAME** | `www` | `cname.vercel-dns.com` | 600 |
-| **CNAME** | `api` | `<your-railway-cname-target>` | 600 |
+| **CNAME** | `api` | `<Railway CNAME from Networking → Custom Domain>` | 600 |
+
+**Delete first:** GoDaddy parking A records on `@` (`13.248.243.5`, `76.223.105.230`) and CNAME `www` → `fallensparrowos.com`.
 
 **Notes:**
 
-- Delete conflicting old A/CNAME records for `@`, `www`, or `api` before adding new ones.
 - DNS propagation can take 5 minutes to 48 hours (usually under 1 hour).
 - SSL certificates are issued automatically by Vercel and Railway once DNS resolves.
+- Railway CNAME is **per service**; copy it only from your Railway dashboard after adding `api.fallensparrowos.com`.
 
 ---
 
