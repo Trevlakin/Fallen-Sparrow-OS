@@ -7,7 +7,3 @@ buildCommand = "pnpm install --frozen-lockfile && bash scripts/railway-build.sh"
 startCommand = "bash scripts/railway-start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-[deploy.healthcheck]
-path = "/health"
-timeout = 30
