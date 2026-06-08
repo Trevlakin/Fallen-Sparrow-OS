@@ -37,9 +37,9 @@ QBO_REALM_ID=
 - **DATABASE_URL**: Do NOT paste a plain connection string. In Railway, click "Add Variable", set
 the key to `DATABASE_URL`, and set the value to the reference `${{Postgres.DATABASE_URL}}`.
 This ensures Railway automatically injects the correct internal Postgres URL.
-- **Auto-migrate on boot**: The API service runs `pnpm db:migrate` automatically on every deploy
-(via `scripts/railway-boot.sh`) before the server starts listening. You do not need Railway Shell
-for migrations unless auto-migrate fails in deploy logs.
+- **Auto-migrate on boot**: The API starts immediately; `pnpm db:migrate` runs in the background
+(via `scripts/railway-boot.sh`) so health checks pass while Postgres connects. You do not need
+Railway Shell for migrations unless auto-migrate fails in deploy logs.
 - **Auto-seed on boot**: When `OWNER_SEED_EMAIL` and `OWNER_SEED_PASSWORD` are set, the API runs
 `pnpm db:seed` after migrate on every deploy. Seed is idempotent: it creates the owner only if
 missing. Manual shell seed is optional.
