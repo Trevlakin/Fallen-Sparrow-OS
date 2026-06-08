@@ -417,6 +417,8 @@ textarea {
   color: var(--text);
   white-space: nowrap;
   flex-shrink: 0;
+  align-self: center;
+  text-align: center;
 }
 
 .login-card label,
