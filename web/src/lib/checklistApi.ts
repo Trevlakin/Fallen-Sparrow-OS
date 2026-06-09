@@ -1,3 +1,4 @@
+import { getTodayEastern } from "@fallen-sparrow/shared";
 import { getApiBase } from "./apiBase.js";
 import { isPinSession } from "./pinSession.js";
 
@@ -110,6 +111,13 @@ export const checklistApi = {
       body: JSON.stringify({ teamMemberId, pin }),
     }),
 
+  startSession: () =>
+    checklistRequest<{
+      sessionDate: string;
+      teamMemberId: string;
+      role: string;
+    }>("/api/checklist/session/start", { method: "POST" }),
+
   getToday: (sessionDate?: string) =>
     checklistRequest<{
       teamMember: { id: string; displayName: string; role: string };
@@ -150,7 +158,7 @@ export const checklistApi = {
 };
 
 export function todayISO(): string {
-  return new Date().toLocaleDateString("en-CA");
+  return getTodayEastern();
 }
 
 export function formatChecklistTime(iso: string | null): string {

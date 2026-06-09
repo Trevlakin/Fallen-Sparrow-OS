@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { getTodayInTimezone } from "@fallen-sparrow/shared";
 import { env } from "../config/env.js";
 import { PinLoginSchema } from "../validators/sopValidators.js";
 import * as checklistService from "../services/checklistService.js";
@@ -21,9 +22,7 @@ const sessionDateSchema = z.object({
 });
 
 function todayISO(): string {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: env.DEFAULT_TIMEZONE,
-  });
+  return getTodayInTimezone(env.DEFAULT_TIMEZONE);
 }
 
 export async function listEmployees(

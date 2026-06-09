@@ -38,7 +38,7 @@ export function ChecklistPage() {
   const [displayName, setDisplayName] = useState("");
   const [sops, setSops] = useState<TodayChecklistSop[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
-  const [sessionDate] = useState(todayISO());
+  const [sessionDate, setSessionDate] = useState(todayISO);
   const [showConfetti, setShowConfetti] = useState(false);
   const [extraTasks, setExtraTasks] = useState<ExtraTask[]>([]);
   const [newTaskText, setNewTaskText] = useState("");
@@ -51,25 +51,27 @@ export function ChecklistPage() {
     isPinSession() &&
     !isPinSessionExpired();
 
-  const loadExtraTasks = useCallback(async () => {
+  const loadExtraTasksForDate = useCallback(async (date: string) => {
     try {
-      const tasks = await checklistApi.listExtraTasksToday(sessionDate);
+      const tasks = await checklistApi.listExtraTasksToday(date);
       setExtraTasks(tasks);
     } catch {
       setExtraTasks([]);
     }
-  }, [sessionDate]);
+  }, []);
 
   const loadToday = useCallback(async (token: string) => {
     sessionTokenRef.current = token;
     setChecklistSessionToken(token);
-    const data = await checklistApi.getToday(sessionDate);
+    const session = await checklistApi.startSession();
+    setSessionDate(session.sessionDate);
+    const data = await checklistApi.getToday(session.sessionDate);
     setDisplayName(data.teamMember.displayName);
     setSops(data.sops);
     setProgress(data.overallProgress);
     setScreen("checklist");
-    await loadExtraTasks();
-  }, [sessionDate, loadExtraTasks]);
+    await loadExtraTasksForDate(session.sessionDate);
+  }, [loadExtraTasksForDate]);
 
   useEffect(() => {
     if (progress.total > 0 && progress.completed === progress.total) {
@@ -117,6 +119,23 @@ export function ChecklistPage() {
       }
     })();
   }, [authLoading, shouldRedirectToApp, loadToday, user]);
+
+  useEffect(() => {
+    if (screen !== "checklist") return;
+
+    const refreshIfNewDay = () => {
+      if (document.visibilityState !== "visible") return;
+      const token = sessionTokenRef.current ?? getChecklistSessionToken();
+      if (!token) return;
+      const today = todayISO();
+      if (today !== sessionDate) {
+        void loadToday(token);
+      }
+    };
+
+    document.addEventListener("visibilitychange", refreshIfNewDay);
+    return () => document.removeEventListener("visibilitychange", refreshIfNewDay);
+  }, [screen, sessionDate, loadToday]);
 
   const submitPin = async (pinValue: string) => {
     if (!selectedEmployee) return;
