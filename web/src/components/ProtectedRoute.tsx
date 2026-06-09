@@ -5,8 +5,10 @@ import { useToast } from "@/context/ToastContext";
 import {
   hasManagerAccess,
   MANAGER_ACCESS_ROLES,
+  type TeamMemberRole,
   type UserRole,
 } from "@fallen-sparrow/shared/constants";
+import { clearExpiredPinSession } from "@/lib/pinSession";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -28,6 +30,10 @@ export function ProtectedRoute({
   const [timedOut, setTimedOut] = useState(false);
 
   const hasToken = Boolean(localStorage.getItem("fs_token"));
+
+  useEffect(() => {
+    clearExpiredPinSession();
+  }, []);
 
   useEffect(() => {
     if (!loading && !user && hasToken && !timedOut && !sessionError) {
@@ -72,7 +78,10 @@ export function ProtectedRoute({
   return <>{children}</>;
 }
 
-function userHasRequiredRole(userRole: UserRole, allowed: UserRole[]): boolean {
+function userHasRequiredRole(
+  userRole: UserRole | TeamMemberRole,
+  allowed: UserRole[],
+): boolean {
   const isManagerOnlyRoute =
     allowed.length === MANAGER_ACCESS_ROLES.length &&
     allowed.includes("OWNER") &&
@@ -80,5 +89,5 @@ function userHasRequiredRole(userRole: UserRole, allowed: UserRole[]): boolean {
   if (isManagerOnlyRoute) {
     return hasManagerAccess(userRole);
   }
-  return allowed.includes(userRole);
+  return (allowed as readonly string[]).includes(userRole);
 }

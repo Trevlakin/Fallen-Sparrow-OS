@@ -7,6 +7,7 @@ import {
   ChecklistApiError,
   formatChecklistTime,
   formatExtraTaskDuration,
+  getChecklistSessionToken,
   greetingForHour,
   setChecklistSessionToken,
   todayISO,
@@ -14,6 +15,7 @@ import {
   type ExtraTask,
   type TodayChecklistSop,
 } from "@/lib/checklistApi";
+import { isPinSession } from "@/lib/pinSession";
 import { emitData, DATA_EVENTS } from "@/lib/eventBus";
 
 type Screen = "loading" | "select" | "pin" | "checklist";
@@ -57,15 +59,26 @@ export function ChecklistPage() {
   useEffect(() => {
     void (async () => {
       try {
+        const existingToken = getChecklistSessionToken();
+        if (existingToken && isPinSession()) {
+          await loadToday(existingToken);
+          return;
+        }
+
         const res = await checklistApi.listEmployees();
         setEmployees(res.employees);
         setScreen("select");
       } catch {
+        if (isPinSession()) {
+          setPinError("Session expired. Please sign in again.");
+          setScreen("select");
+          return;
+        }
         setPinError("Unable to load employees");
         setScreen("select");
       }
     })();
-  }, []);
+  }, [loadToday]);
 
   useEffect(() => {
     if (progress.total > 0 && progress.completed === progress.total) {

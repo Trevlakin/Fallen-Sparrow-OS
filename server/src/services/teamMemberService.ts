@@ -131,3 +131,25 @@ export async function authenticateTeamMemberPin(
     role: member.role as TeamMemberRole,
   };
 }
+
+/** Sprint 9B: find active team member by PIN (bcrypt compare across active roster). */
+export async function findTeamMemberByPin(pin: string): Promise<{
+  id: string;
+  displayName: string;
+  name: string;
+  role: TeamMemberRole;
+} | null> {
+  const members = await teamMemberRepo.listActiveTeamMembersWithPinHash();
+  for (const member of members) {
+    const valid = await verifyPinHash(pin, member.pin);
+    if (valid) {
+      return {
+        id: member.id,
+        displayName: member.displayName,
+        name: member.name,
+        role: member.role as TeamMemberRole,
+      };
+    }
+  }
+  return null;
+}

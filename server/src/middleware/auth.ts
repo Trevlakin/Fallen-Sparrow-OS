@@ -14,6 +14,7 @@ export async function requireAuth(
     }
     const token = header.slice(7);
     const payload = authService.verifyToken(token);
+    req.authPayload = payload;
     req.user = await authService.getUserFromPayload(payload);
     next();
   } catch (err) {

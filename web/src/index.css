@@ -452,6 +452,130 @@ textarea {
   border-radius: 6px;
 }
 
+.login-choice-card {
+  align-items: stretch;
+}
+
+.login-staff-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.25rem 1rem;
+  min-height: 72px;
+}
+
+.login-staff-btn-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.login-staff-btn-sub {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.login-admin-btn {
+  font-size: 0.95rem;
+}
+
+.login-pin-stack {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-pin-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.login-pin-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.login-pin-title {
+  text-align: center;
+  font-size: 1.25rem;
+  margin: 0 0 1.25rem;
+  font-weight: 600;
+}
+
+.login-pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.login-pin-dots--shake {
+  animation: login-pin-shake 0.45s ease;
+}
+
+@keyframes login-pin-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+.login-pin-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: transparent;
+}
+
+.login-pin-dot--filled {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+
+.login-pin-keypad {
+  margin-bottom: 0.75rem;
+}
+
+.pin-key-spacer {
+  visibility: hidden;
+}
+
+.login-pin-clear {
+  align-self: center;
+  margin-top: 0.25rem;
+}
+
 .login-demo {
   margin-top: 0.25rem;
   padding-top: 1rem;

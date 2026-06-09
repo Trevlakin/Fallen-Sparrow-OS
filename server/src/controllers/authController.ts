@@ -8,6 +8,10 @@ const loginSchema = z.object({
   password: z.string().min(8),
 });
 
+const pinLoginSchema = z.object({
+  pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+});
+
 export async function login(
   req: Request,
   res: Response,
@@ -28,16 +32,45 @@ export async function login(
   }
 }
 
+export async function pinLogin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parsed = pinLoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError("Invalid PIN payload", 400);
+    }
+    const result = await authService.pinLogin(parsed.data.pin);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function me(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    if (!req.user) {
+    if (!req.user || !req.authPayload) {
       throw new AppError("Unauthorized", 401);
     }
-    res.json({ user: authService.sanitizeUser(req.user) });
+    const role = authService.getAuthRole(req.authPayload);
+    res.json({
+      user: {
+        ...authService.sanitizeUser(req.user),
+        role,
+        ...(authService.isPinAuthPayload(req.authPayload)
+          ? {
+              authType: "pin" as const,
+              displayName: req.authPayload.displayName,
+            }
+          : {}),
+      },
+    });
   } catch (err) {
     next(err);
   }

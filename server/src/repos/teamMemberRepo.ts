@@ -144,3 +144,14 @@ export async function deactivateTeamMember(id: string): Promise<boolean> {
     .returning({ id: teamMembers.id });
   return Boolean(row);
 }
+
+/** Sprint 9B: active members with PIN hashes for PIN-only login lookup. */
+export async function listActiveTeamMembersWithPinHash(): Promise<
+  (typeof teamMembers.$inferSelect)[]
+> {
+  return db
+    .select()
+    .from(teamMembers)
+    .where(eq(teamMembers.isActive, true))
+    .orderBy(asc(teamMembers.displayName));
+}

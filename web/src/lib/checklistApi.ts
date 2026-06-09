@@ -1,4 +1,5 @@
 import { getApiBase } from "./apiBase.js";
+import { isPinSession } from "./pinSession.js";
 
 const API_BASE = getApiBase();
 
@@ -12,11 +13,17 @@ export class ChecklistApiError extends Error {
   }
 }
 
-/** In-memory session token (not persisted). */
+/** In-memory session token (not persisted). PIN sessions use fs_token from api.ts. */
 let memorySessionToken: string | null = null;
 
 export function getChecklistSessionToken(): string | null {
-  return memorySessionToken;
+  if (memorySessionToken) {
+    return memorySessionToken;
+  }
+  if (isPinSession()) {
+    return localStorage.getItem("fs_token");
+  }
+  return null;
 }
 
 export function setChecklistSessionToken(token: string | null): void {

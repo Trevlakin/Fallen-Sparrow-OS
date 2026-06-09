@@ -7,19 +7,30 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { hasManagerAccess, type UserRole } from "@fallen-sparrow/shared/constants";
+import {
+  hasManagerAccess,
+  type TeamMemberRole,
+  type UserRole,
+} from "@fallen-sparrow/shared/constants";
 import { api, setToken, ApiError } from "@/lib/api";
 import {
   DATABASE_UNAVAILABLE_MESSAGE,
   SESSION_CHECK_TIMEOUT_MESSAGE,
 } from "@/lib/authMessages";
+import {
+  clearExpiredPinSession,
+  clearPinSessionMetadata,
+  setPinSession,
+} from "@/lib/pinSession";
 
 export interface AuthUser {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  role: UserRole | TeamMemberRole;
+  authType?: "pin";
+  displayName?: string;
 }
 
 interface AuthContextValue {
@@ -27,6 +38,7 @@ interface AuthContextValue {
   loading: boolean;
   sessionError: string | null;
   login: (email: string, password: string) => Promise<void>;
+  pinLogin: (pin: string) => Promise<AuthUser>;
   logout: () => void;
   refresh: () => Promise<void>;
   clearSessionError: () => void;
@@ -35,6 +47,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const SESSION_CHECK_TIMEOUT_MS = 10_000;
+
+function mapMeResponse(user: AuthUser): AuthUser {
+  return user;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -46,6 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
+    if (clearExpiredPinSession()) {
+      setUser(null);
+      return;
+    }
+
     const token = localStorage.getItem("fs_token");
     if (!token) {
       setUser(null);
@@ -54,14 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const res = await api.get<{ user: AuthUser }>("/api/auth/me");
-      setUser(res.user);
+      setUser(mapMeResponse(res.user));
       setSessionError(null);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.statusCode === 401 || err.statusCode === 403) {
           setToken(null);
+          clearPinSessionMetadata();
         } else if (err.statusCode === 503) {
           setToken(null);
+          clearPinSessionMetadata();
           setSessionError(DATABASE_UNAVAILABLE_MESSAGE);
         }
       }
@@ -97,13 +120,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+    clearPinSessionMetadata();
     setToken(res.token);
     setUser(res.user);
     setSessionError(null);
   }, []);
 
+  const pinLogin = useCallback(async (pin: string) => {
+    const res = await api.post<{
+      token: string;
+      employeeId: string;
+      name: string;
+      role: TeamMemberRole;
+    }>("/api/auth/pin-login", { pin });
+
+    setPinSession(res.token);
+    const pinUser: AuthUser = {
+      id: res.employeeId,
+      email: `pin-${res.employeeId}@staff.internal`,
+      firstName: res.name.split(/\s+/)[0] ?? res.name,
+      lastName: res.name.split(/\s+/).slice(1).join(" "),
+      role: res.role,
+      authType: "pin",
+      displayName: res.name,
+    };
+    setUser(pinUser);
+    setSessionError(null);
+    return pinUser;
+  }, []);
+
   const logout = useCallback(() => {
     setToken(null);
+    clearPinSessionMetadata();
     setUser(null);
     setSessionError(null);
   }, []);
@@ -114,11 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       sessionError,
       login,
+      pinLogin,
       logout,
       refresh,
       clearSessionError,
     }),
-    [user, loading, sessionError, login, logout, refresh, clearSessionError],
+    [user, loading, sessionError, login, pinLogin, logout, refresh, clearSessionError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
