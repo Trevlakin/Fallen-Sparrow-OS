@@ -1,6 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
 import type { UserRole } from "@fallen-sparrow/shared/constants";
+import * as authService from "../services/authService.js";
 import { AppError } from "../utils/errors.js";
+
+function resolveAuthRole(req: Request): UserRole {
+  if (req.authPayload) {
+    return authService.getAuthRole(req.authPayload) as UserRole;
+  }
+  return req.user!.role as UserRole;
+}
 
 export function requireRoles(...allowed: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -8,7 +16,7 @@ export function requireRoles(...allowed: UserRole[]) {
       next(new AppError("Unauthorized", 401));
       return;
     }
-    const role = req.user.role as UserRole;
+    const role = resolveAuthRole(req);
     if (!allowed.includes(role)) {
       next(new AppError("Forbidden", 403));
       return;

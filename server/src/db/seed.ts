@@ -458,12 +458,33 @@ const SEED_TEAM_MEMBERS = [
   { name: "JP", displayName: "JP", role: "MAINTENANCE" as const, pin: "7777" },
 ] as const;
 
+/** Ensure owner/manager PINs keep admin roles even if team_members was seeded earlier. */
+async function ensureAdminTeamMemberRoles(): Promise<void> {
+  const adminRoles = [
+    { name: "Legion Avegno", role: "OWNER" as const },
+    { name: "Hector Morales", role: "MANAGER" as const },
+  ];
+
+  for (const { name, role } of adminRoles) {
+    const updated = await db
+      .update(teamMembers)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(teamMembers.name, name))
+      .returning({ id: teamMembers.id });
+
+    if (updated[0]) {
+      console.log(`Ensured ${name} team_member role is ${role}`);
+    }
+  }
+}
+
 // Demo seed PINs are unique per employee. After seed, managers must assign unique PINs
 // in SOPs > Employee PINs. Runtime login rejects duplicate PINs across active members.
 
 async function seedTeamMembers(): Promise<void> {
   const existing = await db.select({ id: teamMembers.id }).from(teamMembers).limit(1);
   if (existing[0]) {
+    await ensureAdminTeamMemberRoles();
     // Sprint 9A: idempotent insert for JP test user if not already present
     const jp = await db
       .select({ id: teamMembers.id })

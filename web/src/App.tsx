@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PinAdminGuard } from "@/components/PinAdminGuard";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoginPage } from "@/pages/Login";
 import { DashboardPage } from "@/pages/Dashboard";
@@ -38,7 +39,9 @@ function HomeRoute() {
 function AuthenticatedApp() {
   return (
     <ProtectedRoute>
-      <AppLayout />
+      <PinAdminGuard>
+        <AppLayout />
+      </PinAdminGuard>
     </ProtectedRoute>
   );
 }

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TEAM_MEMBER_ROLE_LABELS, type TeamMemberRole } from "@fallen-sparrow/shared/constants";
+import { Navigate, useNavigate } from "react-router-dom";
+import {
+  hasDashboardAccess,
+  TEAM_MEMBER_ROLE_LABELS,
+  type TeamMemberRole,
+} from "@fallen-sparrow/shared/constants";
 import { ChecklistItemRow, type ChecklistItemData } from "@/components/checklist/ChecklistItem";
 import { PinPad } from "@/components/checklist/PinPad";
+import { useAuth } from "@/context/AuthContext";
 import {
   checklistApi,
   ChecklistApiError,
@@ -15,12 +21,15 @@ import {
   type ExtraTask,
   type TodayChecklistSop,
 } from "@/lib/checklistApi";
-import { isPinSession } from "@/lib/pinSession";
+import { routeAfterPinLogin } from "@/lib/pinRouting";
+import { isPinSession, isPinSessionExpired } from "@/lib/pinSession";
 import { emitData, DATA_EVENTS } from "@/lib/eventBus";
 
 type Screen = "loading" | "select" | "pin" | "checklist";
 
 export function ChecklistPage() {
+  const { user, loading: authLoading, pinLogin } = useAuth();
+  const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("loading");
   const [employees, setEmployees] = useState<ChecklistEmployee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<ChecklistEmployee | null>(null);
@@ -35,6 +44,12 @@ export function ChecklistPage() {
   const [newTaskText, setNewTaskText] = useState("");
   const [addingTask, setAddingTask] = useState(false);
   const sessionTokenRef = useRef<string | null>(null);
+
+  const shouldRedirectToApp =
+    user?.authType === "pin" &&
+    hasDashboardAccess(user.role) &&
+    isPinSession() &&
+    !isPinSessionExpired();
 
   const loadExtraTasks = useCallback(async () => {
     try {
@@ -57,7 +72,24 @@ export function ChecklistPage() {
   }, [sessionDate, loadExtraTasks]);
 
   useEffect(() => {
+    if (progress.total > 0 && progress.completed === progress.total) {
+      setShowConfetti(true);
+      const t = window.setTimeout(() => setShowConfetti(false), 2500);
+      return () => window.clearTimeout(t);
+    }
+    setShowConfetti(false);
+  }, [progress]);
+
+  useEffect(() => {
     void (async () => {
+      if (authLoading) {
+        return;
+      }
+
+      if (shouldRedirectToApp) {
+        return;
+      }
+
       try {
         const existingToken = getChecklistSessionToken();
         if (existingToken && isPinSession()) {
@@ -78,21 +110,18 @@ export function ChecklistPage() {
         setScreen("select");
       }
     })();
-  }, [loadToday]);
-
-  useEffect(() => {
-    if (progress.total > 0 && progress.completed === progress.total) {
-      setShowConfetti(true);
-      const t = window.setTimeout(() => setShowConfetti(false), 2500);
-      return () => window.clearTimeout(t);
-    }
-    setShowConfetti(false);
-  }, [progress]);
+  }, [authLoading, shouldRedirectToApp, loadToday]);
 
   const submitPin = async (pinValue: string) => {
     if (!selectedEmployee) return;
     setPinError("");
     try {
+      if (hasDashboardAccess(selectedEmployee.role)) {
+        const pinUser = await pinLogin(pinValue);
+        navigate(routeAfterPinLogin(pinUser.role as TeamMemberRole), { replace: true });
+        return;
+      }
+
       const res = await checklistApi.login(selectedEmployee.id, pinValue);
       await loadToday(res.sessionToken);
     } catch (err) {
@@ -188,6 +217,23 @@ export function ChecklistPage() {
     }
   };
 
+  if (authLoading && isPinSession() && !isPinSessionExpired()) {
+    return (
+      <div className="checklist-page">
+        <p className="text-muted checklist-loading">Loading...</p>
+      </div>
+    );
+  }
+
+  if (shouldRedirectToApp && user) {
+    return (
+      <Navigate
+        to={routeAfterPinLogin(user.role as TeamMemberRole)}
+        replace
+      />
+    );
+  }
+
   if (screen === "loading") {
     return (
       <div className="checklist-page">
@@ -203,6 +249,7 @@ export function ChecklistPage() {
           <span className="wordmark-sm">FALLEN SPARROW</span>
           <p>Select your name</p>
         </header>
+        {pinError && <p className="pin-error">{pinError}</p>}
         <ul className="checklist-employee-list">
           {employees.map((employee) => (
             <li key={employee.id}>

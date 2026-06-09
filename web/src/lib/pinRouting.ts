@@ -1,10 +1,11 @@
 import {
-  ROLE_PERMISSIONS,
+  hasDashboardAccess,
   type TeamMemberRole,
 } from "@fallen-sparrow/shared/constants";
 
-export function routeAfterPinLogin(role: TeamMemberRole): string {
-  if (ROLE_PERMISSIONS[role]?.dashboard) {
+/** Admin-capable PIN roles land in the full app; staff stay on checklist-only. */
+export function routeAfterPinLogin(role: TeamMemberRole | string): string {
+  if (hasDashboardAccess(role)) {
     return "/dashboard";
   }
   return "/checklist";

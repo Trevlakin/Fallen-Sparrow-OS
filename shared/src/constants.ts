@@ -159,3 +159,9 @@ export const ROLE_PERMISSIONS: Record<TeamMemberRole, {
   CLEANER:     { dashboard: false, pl: false,  jarvis: false, checklist: true,  admin: false },
   MAINTENANCE: { dashboard: false, pl: false,  jarvis: false, checklist: true,  admin: false },
 };
+
+/** Sprint 9B: full admin shell (dashboard + sidebar), not checklist-only. */
+export function hasDashboardAccess(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return ROLE_PERMISSIONS[role as TeamMemberRole]?.dashboard ?? false;
+}

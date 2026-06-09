@@ -17,7 +17,7 @@ export default defineConfig({
         theme_color: "#0A0A0A",
         background_color: "#0A0A0A",
         display: "standalone",
-        start_url: "/checklist",
+        start_url: "/login",
         icons: [
           {
             src: "/icons/icon-192.png",

@@ -132,4 +132,20 @@ describe("authService pinLogin", () => {
     await expect(pinLogin("1234")).rejects.toBeInstanceOf(AppError);
     await expect(pinLogin("1234")).rejects.toMatchObject({ statusCode: 409 });
   });
+
+  it("returns OWNER role for Legion PIN login", async () => {
+    listWithPinHash.mockResolvedValue([
+      await memberRow("1", "Legion Avegno", "Legion A", "OWNER", "9001"),
+      await memberRow("2", "Hector Morales", "Hector M", "MANAGER", "7723"),
+    ]);
+
+    const { pinLogin } = await import("../../src/services/authService.js");
+    const legion = await pinLogin("9001");
+    expect(legion.role).toBe("OWNER");
+    expect(legion.name).toBe("Legion A");
+
+    const hector = await pinLogin("7723");
+    expect(hector.role).toBe("MANAGER");
+    expect(hector.name).toBe("Hector M");
+  });
 });
