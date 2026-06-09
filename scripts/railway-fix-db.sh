@@ -15,6 +15,9 @@ fi
 
 RAILWAY="${RAILWAY:-npx --yes @railway/cli@4.5.4}"
 API_URL="${API_URL:-https://api.fallensparrowos.com}"
+RAILWAY_PROJECT="${RAILWAY_PROJECT:-Fallen Sparrow OS}"
+RAILWAY_API_SERVICE="${RAILWAY_API_SERVICE:-@fallen-sparrow/server}"
+RAILWAY_WEB_SERVICE="${RAILWAY_WEB_SERVICE:-@fallen-sparrow/web}"
 
 echo "Fallen Sparrow: Railway database fix"
 echo "===================================="
@@ -29,20 +32,8 @@ A) CLI (recommended after one-time token):
    2. Add to .env: RAILWAY_TOKEN=...
    3. Re-run: bash scripts/railway-fix-db.sh
 
-B) Railway dashboard (no token):
-   1. Project → ensure a PostgreSQL plugin exists (+ New → Database → PostgreSQL).
-   2. Open the API service (@fallen-sparrow/server or Node service with FS_ROLE=server).
-   3. Variables → DATABASE_URL → use "Add Reference" (not plain text):
-        Value: ${{Postgres.DATABASE_URL}}
-      If that fails, open the Postgres service and note its exact name (e.g. PostgreSQL).
-      Use: ${{<ExactServiceName>.DATABASE_URL}}
-   4. Set OWNER_SEED_EMAIL and OWNER_SEED_PASSWORD (see docs/RAILWAY_ENV_VARS.md).
-   5. Deployments → Redeploy latest.
-   6. Verify:
-        curl -sS https://api.fallensparrowos.com/health/ready
-        curl -sS -X POST https://api.fallensparrowos.com/api/auth/login \\
-          -H "Content-Type: application/json" \\
-          -d '{"email":"admin@fallensparrowos.com","password":"ChangeMe123!"}'
+B) Railway dashboard (no token): see docs/RAILWAY_TROUBLESHOOTING.md
+   section "Login 503 / ECONNREFUSED (DATABASE_URL on wrong service)".
 
 MANUAL
   exit 1
@@ -50,14 +41,20 @@ fi
 
 export RAILWAY_TOKEN
 
-echo "==> Linking Railway project (select API/server service when prompted)"
-$RAILWAY link || true
+if ! $RAILWAY whoami >/dev/null 2>&1; then
+  echo "ERROR: RAILWAY_TOKEN is set but 'railway whoami' failed."
+  echo "Create a fresh token at https://railway.com/account/tokens and update .env."
+  exit 1
+fi
+
+echo "==> Linking project ${RAILWAY_PROJECT} → service ${RAILWAY_API_SERVICE}"
+$RAILWAY link -p "$RAILWAY_PROJECT" -s "$RAILWAY_API_SERVICE"
 
 echo "==> Detecting Postgres service name for DATABASE_URL reference"
 POSTGRES_REF="${RAILWAY_POSTGRES_REF:-}"
 if [[ -z "$POSTGRES_REF" ]]; then
   for candidate in Postgres PostgreSQL postgres postgresql; do
-    if $RAILWAY variables --service "$candidate" 2>/dev/null | grep -q DATABASE_URL; then
+    if $RAILWAY variables --service "$candidate" --json 2>/dev/null | grep -q DATABASE_URL; then
       POSTGRES_REF="${candidate}"
       break
     fi
@@ -74,19 +71,25 @@ fi
 DB_REF="\${{${POSTGRES_REF}.DATABASE_URL}}"
 
 echo "==> Setting API service variables (DATABASE_URL reference + owner seed)"
-$RAILWAY variables set \
-  "NODE_ENV=production" \
-  "DATABASE_URL=${DB_REF}" \
-  "OWNER_SEED_EMAIL=${OWNER_SEED_EMAIL:-admin@fallensparrowos.com}" \
-  "OWNER_SEED_PASSWORD=${OWNER_SEED_PASSWORD:-ChangeMe123!}" \
-  "FS_ROLE=server"
+$RAILWAY variables --service "$RAILWAY_API_SERVICE" \
+  --set "NODE_ENV=production" \
+  --set "DATABASE_URL=${DB_REF}" \
+  --set "OWNER_SEED_EMAIL=${OWNER_SEED_EMAIL:-admin@fallensparrowos.com}" \
+  --set "OWNER_SEED_PASSWORD=${OWNER_SEED_PASSWORD:-ChangeMe123!}" \
+  --set "FS_ROLE=server"
+
+echo "==> Setting web service FS_ROLE=web"
+$RAILWAY variables --service "$RAILWAY_WEB_SERVICE" --set "FS_ROLE=web" || true
 
 echo "==> Redeploying API service"
-$RAILWAY redeploy --yes 2>/dev/null || $RAILWAY up --detach
+$RAILWAY redeploy --service "$RAILWAY_API_SERVICE" --yes
+
+echo "==> Waiting for deploy (60s)..."
+sleep 60
 
 echo "==> Running migrations via Railway run (backup if boot migrate is slow)"
-$RAILWAY run pnpm db:migrate
-$RAILWAY run pnpm db:seed
+$RAILWAY run --service "$RAILWAY_API_SERVICE" pnpm db:migrate
+$RAILWAY run --service "$RAILWAY_API_SERVICE" pnpm db:seed
 
 echo "==> Verify production"
 echo "Health: curl -sS ${API_URL}/health"

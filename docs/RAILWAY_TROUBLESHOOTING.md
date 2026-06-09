@@ -147,6 +147,59 @@ If you never created a project in the dashboard, `railway list` may be empty eve
 
 ---
 
+## Login 503 / ECONNREFUSED (DATABASE_URL on wrong service)
+
+**Symptom:** `curl https://api.fallensparrowos.com/health/ready` returns `503` with
+`"database":"unavailable"` and `"pgCode":"ECONNREFUSED"`. Login returns the same 503.
+
+**Cause:** The API service (`@fallen-sparrow/server`) is not using Railway's internal Postgres URL.
+Postgres already has `DATABASE_URL` on the **Postgres** service. That does **not** wire the API.
+You must add a **variable reference** on the **API** service.
+
+If you are on **Postgres → Variables** (DATABASE_URL, PGHOST, PGPORT, etc.), you are on the
+**wrong service**. Postgres vars stay on Postgres; the API needs its own `DATABASE_URL` reference.
+
+### Click-by-click (dashboard, project: Fallen Sparrow OS)
+
+1. Open [railway.app/dashboard](https://railway.app/dashboard) → project **Fallen Sparrow OS**.
+2. On the canvas, click **`@fallen-sparrow/server`** (API), **not** Postgres.
+3. Open the **Variables** tab.
+4. **Remove** any plain-text `DATABASE_URL` that points at `localhost`, `127.0.0.1`, or a pasted
+   public URL copied from your laptop `.env`. Those cause `ECONNREFUSED` in production.
+5. Click **+ New Variable** (or **Raw Editor**):
+   - **Name:** `DATABASE_URL`
+   - **Value:** click **Add Reference** (or **Reference**) → service **Postgres** → variable
+     **`DATABASE_URL`**
+   - If typing manually, use exactly: `${{Postgres.DATABASE_URL}}` (service name must match the
+     Postgres tile on your canvas; if it is named `PostgreSQL`, use `${{PostgreSQL.DATABASE_URL}}`).
+6. On the same **@fallen-sparrow/server** Variables tab, confirm or add:
+   - `OWNER_SEED_EMAIL` = `admin@fallensparrowos.com`
+   - `OWNER_SEED_PASSWORD` = `ChangeMe123!`
+   - `FS_ROLE` = `server`
+   - `NODE_ENV` = `production`
+7. Click **`@fallen-sparrow/web`** → **Variables** → set `FS_ROLE` = `web`.
+8. Back on **`@fallen-sparrow/server`** → **Deployments** → **Redeploy** latest (or **Deploy**).
+9. Wait until deploy status is **Success**. In **Deploy Logs**, look for
+   `Railway boot: running database migrations`.
+10. Verify:
+
+```bash
+curl -sS https://api.fallensparrowos.com/health/ready
+curl -sS -X POST https://api.fallensparrowos.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@fallensparrowos.com","password":"ChangeMe123!"}'
+```
+
+Expect `/health/ready` with `"status":"ready"` and login **HTTP 200** with a token.
+
+### CLI (after valid token)
+
+1. [railway.com/account/tokens](https://railway.com/account/tokens) → create token (Account token).
+2. Add to local `.env`: `RAILWAY_TOKEN=...` (never commit). Confirm: `railway whoami`.
+3. Run: `bash scripts/railway-fix-db.sh`
+
+---
+
 ## Checklist (copy for Legion)
 
 - [ ] Repo live on GitHub: `Trevlakin/Fallen-Sparrow-OS`, branch `main`
