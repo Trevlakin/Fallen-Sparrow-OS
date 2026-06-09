@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import type { TeamMemberRole } from "@fallen-sparrow/shared/constants";
+import { getStudioDateFromTimestamp } from "@fallen-sparrow/shared";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
 import * as sopCompletionRepo from "../repos/sopCompletionRepo.js";
@@ -91,12 +92,19 @@ export async function getTodayChecklist(
             teamMemberId,
             sessionDate,
           );
+          const isValidCompletion =
+            completion !== null &&
+            (completion.completedAt === null ||
+              getStudioDateFromTimestamp(
+                completion.completedAt,
+                env.DEFAULT_TIMEZONE,
+              ) === sessionDate);
           return {
             id: item.id,
             text: item.label,
             sortOrder: item.sortOrder ?? 0,
-            completed: Boolean(completion),
-            completedAt: completion?.completedAt ?? null,
+            completed: isValidCompletion,
+            completedAt: isValidCompletion ? completion.completedAt : null,
           };
         }),
       );

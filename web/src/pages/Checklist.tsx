@@ -65,7 +65,7 @@ export function ChecklistPage() {
     setChecklistSessionToken(token);
     const session = await checklistApi.startSession();
     setSessionDate(session.sessionDate);
-    const data = await checklistApi.getToday(session.sessionDate);
+    const data = await checklistApi.getToday();
     setDisplayName(data.teamMember.displayName);
     setSops(data.sops);
     setProgress(data.overallProgress);
@@ -123,18 +123,28 @@ export function ChecklistPage() {
   useEffect(() => {
     if (screen !== "checklist") return;
 
-    const refreshIfNewDay = () => {
-      if (document.visibilityState !== "visible") return;
+    const refresh = () => {
       const token = sessionTokenRef.current ?? getChecklistSessionToken();
       if (!token) return;
-      const today = todayISO();
-      if (today !== sessionDate) {
-        void loadToday(token);
-      }
+      void loadToday(token);
     };
 
-    document.addEventListener("visibilitychange", refreshIfNewDay);
-    return () => document.removeEventListener("visibilitychange", refreshIfNewDay);
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      refresh();
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (todayISO() !== sessionDate) {
+        refresh();
+      }
+    }, 60_000);
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [screen, sessionDate, loadToday]);
 
   const submitPin = async (pinValue: string) => {

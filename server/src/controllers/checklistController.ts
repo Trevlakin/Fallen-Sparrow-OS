@@ -67,15 +67,13 @@ export async function getTodayChecklist(
     if (!req.checklistAuth) {
       throw new AppError("Checklist session required", 401);
     }
-    const sessionDate =
-      typeof req.query["sessionDate"] === "string"
-        ? req.query["sessionDate"]
-        : todayISO();
+    const sessionDate = todayISO();
     const data = await checklistService.getTodayChecklist(
       req.checklistAuth.teamMemberId,
       req.checklistAuth.role,
       sessionDate,
     );
+    res.setHeader("Cache-Control", "no-store");
     res.json(data);
   } catch (err) {
     next(err);
@@ -92,10 +90,7 @@ export async function completeChecklistItem(
       throw new AppError("Checklist session required", 401);
     }
     const itemId = String(req.params["itemId"] ?? "");
-    const sessionDate =
-      typeof req.body?.sessionDate === "string"
-        ? req.body.sessionDate
-        : todayISO();
+    const sessionDate = todayISO();
     await checklistService.completeChecklistItem(
       req.checklistAuth.teamMemberId,
       itemId,
@@ -118,10 +113,7 @@ export async function uncompleteChecklistItem(
       throw new AppError("Checklist session required", 401);
     }
     const itemId = String(req.params["itemId"] ?? "");
-    const sessionDate =
-      typeof req.body?.sessionDate === "string"
-        ? req.body.sessionDate
-        : todayISO();
+    const sessionDate = todayISO();
     await checklistService.uncompleteChecklistItem(
       req.checklistAuth.teamMemberId,
       itemId,
@@ -145,6 +137,7 @@ export async function startSession(
       throw new AppError("Checklist session required", 401);
     }
     const sessionDate = todayISO();
+    res.setHeader("Cache-Control", "no-store");
     res.json({ sessionDate, teamMemberId: req.checklistAuth.teamMemberId, role: req.checklistAuth.role });
   } catch (err) {
     next(err);

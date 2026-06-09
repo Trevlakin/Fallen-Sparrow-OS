@@ -4940,6 +4940,19 @@ textarea {
   cursor: pointer;
 }
 
+.checklist-label {
+  text-align: left;
+  justify-self: start;
+  min-width: 0;
+}
+
+.checklist-time {
+  justify-self: end;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .checklist-item-btn.completed .checklist-label {
   text-decoration: line-through;
   color: var(--muted);

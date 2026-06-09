@@ -46,6 +46,7 @@ async function checklistRequest<T>(
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
+    cache: "no-store",
     ...options,
     headers,
   });
@@ -118,14 +119,12 @@ export const checklistApi = {
       role: string;
     }>("/api/checklist/session/start", { method: "POST" }),
 
-  getToday: (sessionDate?: string) =>
+  getToday: () =>
     checklistRequest<{
       teamMember: { id: string; displayName: string; role: string };
       sops: TodayChecklistSop[];
       overallProgress: { completed: number; total: number };
-    }>(
-      `/api/checklist/today${sessionDate ? `?sessionDate=${sessionDate}` : ""}`,
-    ),
+    }>("/api/checklist/today"),
 
   complete: (itemId: string) =>
     checklistRequest<void>(`/api/checklist/complete/${itemId}`, {

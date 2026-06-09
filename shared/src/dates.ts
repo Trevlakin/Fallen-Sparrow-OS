@@ -10,3 +10,11 @@ export function getTodayInTimezone(timezone: string = STUDIO_TIMEZONE): string {
 export function getTodayEastern(): string {
   return getTodayInTimezone(STUDIO_TIMEZONE);
 }
+
+/** YYYY-MM-DD in studio timezone from a timestamp (heals UTC session_date mismatches). */
+export function getStudioDateFromTimestamp(
+  date: Date,
+  timezone: string = STUDIO_TIMEZONE,
+): string {
+  return date.toLocaleDateString("en-CA", { timeZone: timezone });
+}
