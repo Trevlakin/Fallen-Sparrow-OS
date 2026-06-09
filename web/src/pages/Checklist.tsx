@@ -93,6 +93,12 @@ export function ChecklistPage() {
       try {
         const existingToken = getChecklistSessionToken();
         if (existingToken && isPinSession()) {
+          if (!user) {
+            return;
+          }
+          if (hasDashboardAccess(user.role)) {
+            return;
+          }
           await loadToday(existingToken);
           return;
         }
@@ -110,7 +116,7 @@ export function ChecklistPage() {
         setScreen("select");
       }
     })();
-  }, [authLoading, shouldRedirectToApp, loadToday]);
+  }, [authLoading, shouldRedirectToApp, loadToday, user]);
 
   const submitPin = async (pinValue: string) => {
     if (!selectedEmployee) return;
@@ -217,7 +223,7 @@ export function ChecklistPage() {
     }
   };
 
-  if (authLoading && isPinSession() && !isPinSessionExpired()) {
+  if (isPinSession() && !isPinSessionExpired() && (authLoading || !user)) {
     return (
       <div className="checklist-page">
         <p className="text-muted checklist-loading">Loading...</p>
