@@ -423,7 +423,7 @@ textarea {
 
 .login-card label,
 .login-card input,
-.login-card button,
+.login-card button:not(.pin-key):not(.login-pin-back),
 .login-card .login-demo-maintenance {
   width: 100%;
   min-width: 280px;
@@ -564,11 +564,41 @@ textarea {
 }
 
 .login-pin-keypad {
-  margin-bottom: 0.75rem;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 0.75rem;
+  box-sizing: border-box;
+}
+
+.login-pin-card .pin-key {
+  width: auto;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0;
 }
 
 .pin-key-spacer {
   visibility: hidden;
+}
+
+@media (max-width: 480px) {
+  .login-pin-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .login-pin-stack {
+    max-width: 100%;
+  }
+
+  .login-pin-keypad {
+    max-width: 100%;
+    gap: 0.5rem;
+  }
+
+  .login-pin-card .pin-key {
+    min-height: 52px;
+    font-size: 1.25rem;
+  }
 }
 
 .login-pin-clear {
