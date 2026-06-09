@@ -458,6 +458,9 @@ const SEED_TEAM_MEMBERS = [
   { name: "JP", displayName: "JP", role: "MAINTENANCE" as const, pin: "7777" },
 ] as const;
 
+// Demo seed PINs are unique per employee. After seed, managers must assign unique PINs
+// in SOPs > Employee PINs. Runtime login rejects duplicate PINs across active members.
+
 async function seedTeamMembers(): Promise<void> {
   const existing = await db.select({ id: teamMembers.id }).from(teamMembers).limit(1);
   if (existing[0]) {

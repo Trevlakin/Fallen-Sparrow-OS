@@ -7,6 +7,72 @@ import * as pinChangeHistoryRepo from "../repos/pinChangeHistoryRepo.js";
 
 const PIN_SALT_ROUNDS = 10;
 
+export const DUPLICATE_PIN_MESSAGE =
+  "This PIN is already used by another employee. Choose a different PIN.";
+
+export const AMBIGUOUS_PIN_MESSAGE =
+  "This PIN is assigned to multiple employees. Contact a manager to reset PINs.";
+
+type PinMatchedMember = {
+  id: string;
+  displayName: string;
+  name: string;
+  role: TeamMemberRole;
+};
+
+function toPinMatchedMember(
+  member: Awaited<
+    ReturnType<typeof teamMemberRepo.listActiveTeamMembersWithPinHash>
+  >[number],
+): PinMatchedMember {
+  return {
+    id: member.id,
+    displayName: member.displayName,
+    name: member.name,
+    role: member.role as TeamMemberRole,
+  };
+}
+
+/** Active roster members whose stored bcrypt hash matches this PIN. */
+export async function findActiveMembersMatchingPin(
+  pin: string,
+  excludeMemberId?: string,
+): Promise<PinMatchedMember[]> {
+  const members = await teamMemberRepo.listActiveTeamMembersWithPinHash();
+  const matches: PinMatchedMember[] = [];
+  for (const member of members) {
+    if (excludeMemberId && member.id === excludeMemberId) {
+      continue;
+    }
+    const valid = await verifyPinHash(pin, member.pin);
+    if (valid) {
+      matches.push(toPinMatchedMember(member));
+    }
+  }
+  return matches;
+}
+
+export async function assertPinUniqueAmongActiveMembers(
+  pin: string,
+  excludeMemberId?: string,
+): Promise<void> {
+  const matches = await findActiveMembersMatchingPin(pin, excludeMemberId);
+  if (matches.length > 0) {
+    throw new AppError(DUPLICATE_PIN_MESSAGE, 409);
+  }
+}
+
+async function generateUniquePin(): Promise<string> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const pin = generatePin();
+    const matches = await findActiveMembersMatchingPin(pin);
+    if (matches.length === 0) {
+      return pin;
+    }
+  }
+  throw new AppError("Unable to generate a unique PIN. Try again.", 500);
+}
+
 export function generatePin(): string {
   return String(randomInt(0, 10000)).padStart(4, "0");
 }
@@ -53,7 +119,10 @@ export async function createTeamMember(input: {
   role: TeamMemberRole;
   pin?: string;
 }) {
-  const pin = input.pin ?? generatePin();
+  const pin = input.pin ?? (await generateUniquePin());
+  if (input.pin) {
+    await assertPinUniqueAmongActiveMembers(input.pin);
+  }
   const displayName = await generateDisplayName(input.name);
   const pinHash = await hashPin(pin);
   const member = await teamMemberRepo.insertTeamMember({
@@ -92,6 +161,7 @@ export async function changeTeamMemberPin(
   if (!member || !member.isActive) {
     throw new AppError("Team member not found", 404);
   }
+  await assertPinUniqueAmongActiveMembers(pin, id);
   const pinHash = await hashPin(pin);
   const ok = await teamMemberRepo.updateTeamMemberPin(id, pinHash);
   if (!ok) {
@@ -121,8 +191,14 @@ export async function authenticateTeamMemberPin(
   if (!member || !member.isActive) {
     throw new AppError("Incorrect PIN, try again", 401);
   }
-  const valid = await verifyPinHash(pin, member.pin);
-  if (!valid) {
+  const matches = await findActiveMembersMatchingPin(pin);
+  if (matches.length === 0) {
+    throw new AppError("Incorrect PIN, try again", 401);
+  }
+  if (matches.length > 1) {
+    throw new AppError(AMBIGUOUS_PIN_MESSAGE, 409);
+  }
+  if (matches[0]!.id !== teamMemberId) {
     throw new AppError("Incorrect PIN, try again", 401);
   }
   return {
@@ -132,24 +208,19 @@ export async function authenticateTeamMemberPin(
   };
 }
 
-/** Sprint 9B: find active team member by PIN (bcrypt compare across active roster). */
+/** Sprint 9B: find the sole active team member for a PIN, or reject ambiguous matches. */
 export async function findTeamMemberByPin(pin: string): Promise<{
   id: string;
   displayName: string;
   name: string;
   role: TeamMemberRole;
 } | null> {
-  const members = await teamMemberRepo.listActiveTeamMembersWithPinHash();
-  for (const member of members) {
-    const valid = await verifyPinHash(pin, member.pin);
-    if (valid) {
-      return {
-        id: member.id,
-        displayName: member.displayName,
-        name: member.name,
-        role: member.role as TeamMemberRole,
-      };
-    }
+  const matches = await findActiveMembersMatchingPin(pin);
+  if (matches.length === 0) {
+    return null;
   }
-  return null;
+  if (matches.length > 1) {
+    throw new AppError(AMBIGUOUS_PIN_MESSAGE, 409);
+  }
+  return matches[0]!;
 }
