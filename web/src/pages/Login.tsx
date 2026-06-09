@@ -6,12 +6,14 @@ import { DATABASE_UNAVAILABLE_MESSAGE } from "@/lib/authMessages";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { routeAfterPinLogin } from "@/lib/pinRouting";
 import {
+  clearExpiredPinSession,
   clearPinAttempts,
   getPinLockoutRemainingMs,
   isPinSession,
   isPinSessionExpired,
   recordPinFailure,
 } from "@/lib/pinSession";
+import { setChecklistSessionToken } from "@/lib/checklistApi";
 import type { TeamMemberRole } from "@fallen-sparrow/shared/constants";
 
 const STARTUP_RETRY_MS = 3_000;
@@ -39,6 +41,11 @@ export function LoginPage() {
 
   const displayError = error ?? sessionError;
   const isLockedOut = lockoutMs > 0;
+
+  useEffect(() => {
+    clearExpiredPinSession();
+    setChecklistSessionToken(null);
+  }, []);
 
   useEffect(() => {
     const tick = () => {

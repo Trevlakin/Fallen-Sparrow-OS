@@ -4864,6 +4864,32 @@ textarea {
   margin-bottom: 1.5rem;
 }
 
+.checklist-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.checklist-sign-out-btn {
+  background: none;
+  border: none;
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.checklist-sign-out-btn:hover,
+.checklist-sign-out-btn:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .pin-display {
   display: flex;
   justify-content: center;

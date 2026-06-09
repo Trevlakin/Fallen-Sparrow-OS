@@ -1,3 +1,4 @@
+// PWA cache revision: 2025-06-09-checklist-signout-daily-reset
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";

@@ -94,11 +94,11 @@ export async function getTodayChecklist(
           );
           const isValidCompletion =
             completion !== null &&
-            (completion.completedAt === null ||
-              getStudioDateFromTimestamp(
-                completion.completedAt,
-                env.DEFAULT_TIMEZONE,
-              ) === sessionDate);
+            completion.completedAt !== null &&
+            getStudioDateFromTimestamp(
+              completion.completedAt,
+              env.DEFAULT_TIMEZONE,
+            ) === sessionDate;
           return {
             id: item.id,
             text: item.label,

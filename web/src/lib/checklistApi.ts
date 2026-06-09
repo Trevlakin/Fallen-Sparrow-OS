@@ -31,6 +31,14 @@ export function setChecklistSessionToken(token: string | null): void {
   memorySessionToken = token;
 }
 
+function withCacheBuster(path: string, method: string | undefined): string {
+  if (method && method !== "GET") {
+    return path;
+  }
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}t=${Date.now()}`;
+}
+
 async function checklistRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -45,7 +53,8 @@ async function checklistRequest<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${withCacheBuster(path, options.method)}`;
+  const res = await fetch(url, {
     cache: "no-store",
     ...options,
     headers,

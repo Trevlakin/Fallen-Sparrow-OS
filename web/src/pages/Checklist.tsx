@@ -28,7 +28,7 @@ import { emitData, DATA_EVENTS } from "@/lib/eventBus";
 type Screen = "loading" | "select" | "pin" | "checklist";
 
 export function ChecklistPage() {
-  const { user, loading: authLoading, pinLogin } = useAuth();
+  const { user, loading: authLoading, pinLogin, logout } = useAuth();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("loading");
   const [employees, setEmployees] = useState<ChecklistEmployee[]>([]);
@@ -60,7 +60,18 @@ export function ChecklistPage() {
     }
   }, []);
 
+  const signOut = useCallback(() => {
+    setChecklistSessionToken(null);
+    sessionTokenRef.current = null;
+    logout();
+    navigate("/login", { replace: true });
+  }, [logout, navigate]);
+
   const loadToday = useCallback(async (token: string) => {
+    setSops([]);
+    setProgress({ completed: 0, total: 0 });
+    setExtraTasks([]);
+    setShowConfetti(false);
     sessionTokenRef.current = token;
     setChecklistSessionToken(token);
     const session = await checklistApi.startSession();
@@ -92,6 +103,11 @@ export function ChecklistPage() {
         return;
       }
 
+      if (isPinSession() && isPinSessionExpired()) {
+        signOut();
+        return;
+      }
+
       try {
         const existingToken = getChecklistSessionToken();
         if (existingToken && isPinSession()) {
@@ -110,15 +126,14 @@ export function ChecklistPage() {
         setScreen("select");
       } catch {
         if (isPinSession()) {
-          setPinError("Session expired. Please sign in again.");
-          setScreen("select");
+          signOut();
           return;
         }
         setPinError("Unable to load employees");
         setScreen("select");
       }
     })();
-  }, [authLoading, shouldRedirectToApp, loadToday, user]);
+  }, [authLoading, shouldRedirectToApp, loadToday, signOut, user]);
 
   useEffect(() => {
     if (screen !== "checklist") return;
@@ -281,7 +296,16 @@ export function ChecklistPage() {
     return (
       <div className="checklist-page checklist-select-page">
         <header className="checklist-pin-header">
-          <span className="wordmark-sm">FALLEN SPARROW</span>
+          <div className="checklist-header-top">
+            <span className="wordmark-sm">FALLEN SPARROW</span>
+            <button
+              type="button"
+              className="checklist-sign-out-btn"
+              onClick={signOut}
+            >
+              Sign out
+            </button>
+          </div>
           <p>Select your name</p>
         </header>
         {pinError && <p className="pin-error">{pinError}</p>}
@@ -318,7 +342,16 @@ export function ChecklistPage() {
     return (
       <div className="checklist-page checklist-pin-page">
         <header className="checklist-pin-header">
-          <span className="wordmark-sm">FALLEN SPARROW</span>
+          <div className="checklist-header-top">
+            <span className="wordmark-sm">FALLEN SPARROW</span>
+            <button
+              type="button"
+              className="checklist-sign-out-btn"
+              onClick={signOut}
+            >
+              Sign out
+            </button>
+          </div>
           <p>Enter your PIN</p>
           {selectedEmployee && (
             <p className="text-muted">{selectedEmployee.displayName}</p>
@@ -352,7 +385,16 @@ export function ChecklistPage() {
     <div className="checklist-page">
       {showConfetti && <div className="checklist-confetti" aria-hidden />}
       <header className="checklist-header">
-        <span className="wordmark-sm">FALLEN SPARROW</span>
+        <div className="checklist-header-top">
+          <span className="wordmark-sm">FALLEN SPARROW</span>
+          <button
+            type="button"
+            className="checklist-sign-out-btn"
+            onClick={signOut}
+          >
+            Switch user
+          </button>
+        </div>
         <h1>
           {greetingForHour()}, {displayName}
         </h1>
