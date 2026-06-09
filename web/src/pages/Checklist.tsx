@@ -392,7 +392,7 @@ export function ChecklistPage() {
             className="checklist-sign-out-btn"
             onClick={signOut}
           >
-            Switch user
+            Sign out
           </button>
         </div>
         <h1>
@@ -513,6 +513,16 @@ export function ChecklistPage() {
           </button>
         </div>
       </section>
+
+      <footer className="checklist-sign-out-footer">
+        <button
+          type="button"
+          className="checklist-sign-out-footer-btn"
+          onClick={signOut}
+        >
+          Sign out
+        </button>
+      </footer>
     </div>
   );
 }

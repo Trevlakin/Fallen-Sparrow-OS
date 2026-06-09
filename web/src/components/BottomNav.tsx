@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
+  useAuth,
   useCanViewFinancials,
   useIsFrontDesk,
   useIsManager,
@@ -53,6 +54,7 @@ function TabIcon({ name }: { name: "home" | "dump" | "briefing" | "customers" | 
 }
 
 export function BottomNav() {
+  const { logout } = useAuth();
   const isFrontDesk = useIsFrontDesk();
   const isManager = useIsManager();
   const isOwner = useIsOwner();
@@ -60,6 +62,12 @@ export function BottomNav() {
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const handleSignOut = () => {
+    setMoreOpen(false);
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   const visibleMore = moreItems.filter((item) => {
     if (item.ownerOnly && !isOwner) return false;
@@ -195,6 +203,11 @@ export function BottomNav() {
             </li>
           ))}
         </ul>
+        <div className="more-drawer-footer">
+          <button type="button" className="more-drawer-sign-out" onClick={handleSignOut}>
+            Sign out
+          </button>
+        </div>
       </div>
     </>
   );

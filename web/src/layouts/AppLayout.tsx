@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   useAuth,
   useCanViewFinancials,
@@ -64,12 +64,18 @@ function isNavItemActive(
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const canViewFinancials = useCanViewFinancials();
   const isManager = useIsManager();
   const isOwner = useIsOwner();
   const isFrontDesk = useIsFrontDesk();
   const isMobile = useIsMobile();
   const location = useLocation();
+
+  const handleSignOut = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   const [openTasks, setOpenTasks] = useState(0);
   const [openIncidents, setOpenIncidents] = useState(0);
@@ -203,13 +209,27 @@ export function AppLayout() {
               {user ? `${user.firstName} ${user.lastName}` : ""}
             </div>
             <div className="user-email">{user?.email}</div>
-            <button type="button" className="sign-out-link" onClick={logout}>
+            <button type="button" className="sign-out-link" onClick={handleSignOut}>
               Sign Out
             </button>
           </div>
         </div>
       </aside>
       <main className="main-content">
+        {isMobile && user && (
+          <div className="mobile-sign-out-bar">
+            <span className="mobile-sign-out-name">
+              {user.displayName ?? `${user.firstName} ${user.lastName}`}
+            </span>
+            <button
+              type="button"
+              className="mobile-sign-out-btn"
+              onClick={handleSignOut}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
       {isMobile && <BottomNav />}

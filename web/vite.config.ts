@@ -39,6 +39,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Bump when PWA shell must refresh (e.g. sign-out UI changes).
         cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],

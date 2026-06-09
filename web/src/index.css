@@ -4890,6 +4890,81 @@ textarea {
   text-decoration: underline;
 }
 
+.mobile-sign-out-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-sign-out-name {
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-sign-out-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checklist-sign-out-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1.5rem;
+  padding: 1rem 0 calc(1rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+
+.checklist-sign-out-footer-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--amber);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checklist-sign-out-footer-btn:hover,
+.checklist-sign-out-footer-btn:focus-visible {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.more-drawer-footer {
+  padding: 0.75rem 1.25rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+}
+
+.more-drawer-sign-out {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--amber);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .pin-display {
   display: flex;
   justify-content: center;
