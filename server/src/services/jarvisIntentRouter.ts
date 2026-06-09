@@ -177,7 +177,7 @@ function canLogArtistPayout(role: UserRole | undefined): boolean {
 export async function routeClassifiedJarvisInput(
   classified: ClassifiedIntent,
   shopId: string,
-  userId: string,
+  userId: string | undefined,
   timezone?: string,
   userRole?: UserRole,
 ): Promise<
@@ -252,7 +252,7 @@ export async function routeClassifiedJarvisInput(
 export async function tryRouteJarvisByIntent(
   rawText: string,
   shopId: string,
-  userId: string,
+  userId: string | undefined,
   timezone?: string,
   userRole?: UserRole,
 ): Promise<

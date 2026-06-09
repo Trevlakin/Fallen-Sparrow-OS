@@ -128,6 +128,16 @@ export function isPinAuthPayload(
   return "authType" in payload && payload.authType === "pin";
 }
 
+/** User-table FK columns: PIN sessions use team member ids, not users.id. */
+export function resolveAuditUserId(
+  payload: VerifiedAuthPayload | undefined,
+): string | undefined {
+  if (!payload || isPinAuthPayload(payload)) {
+    return undefined;
+  }
+  return payload.sub;
+}
+
 export async function login(
   email: string,
   password: string,

@@ -5,24 +5,30 @@ import * as jarvisService from "../services/jarvisService.js";
 import * as jarvisIntentRouter from "../services/jarvisIntentRouter.js";
 import * as jarvisHistoryService from "../services/jarvisHistoryService.js";
 import * as jarvisArtistPayoutService from "../services/jarvisArtistPayoutService.js";
+import * as authService from "../services/authService.js";
+import type { VerifiedAuthPayload } from "../services/authService.js";
 import * as suggestionRepo from "../repos/suggestionRepo.js";
 import { AppError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
 
 function scheduleJarvisHistoryRecord(
-  userId: string,
+  authPayload: VerifiedAuthPayload | undefined,
   rawText: string,
   responseBody: unknown,
 ): void {
+  const authorUserId = authService.resolveAuditUserId(authPayload);
+  if (!authorUserId) {
+    return;
+  }
   void jarvisHistoryService
     .recordJarvisRequest({
-      authorUserId: userId,
+      authorUserId,
       rawInput: rawText,
       inputType: "text",
       responseBody,
     })
     .catch((err: unknown) => {
-      logger.warn("jarvis history record failed", { err, userId });
+      logger.warn("jarvis history record failed", { err, authorUserId });
     });
 }
 
@@ -62,12 +68,13 @@ export async function parseInput(
 
     const shopId = req.studioContext.studioId;
     const hasImages = Boolean(parsed.data.images?.length);
+    const auditUserId = authService.resolveAuditUserId(req.authPayload);
 
     if (!hasImages) {
       const routed = await jarvisIntentRouter.tryRouteJarvisByIntent(
         parsed.data.rawText,
         shopId,
-        req.user.id,
+        auditUserId,
         undefined,
         req.user.role,
       );
@@ -83,7 +90,7 @@ export async function parseInput(
             ? { payoutProposal: routed.payoutProposal }
             : {}),
         };
-        scheduleJarvisHistoryRecord(req.user.id, parsed.data.rawText, payload);
+        scheduleJarvisHistoryRecord(req.authPayload, parsed.data.rawText, payload);
         res.json(payload);
         return;
       }
@@ -92,7 +99,7 @@ export async function parseInput(
     const [result, context] = await Promise.all([
       jarvisService.parseJarvisInput({
         shopId,
-        userId: req.user.id,
+        userId: auditUserId,
         rawText: parsed.data.rawText,
         images: parsed.data.images,
       }),
@@ -115,7 +122,7 @@ export async function parseInput(
       suggestions: result.suggestions,
       jarvisResponse,
     };
-    scheduleJarvisHistoryRecord(req.user.id, parsed.data.rawText, payload);
+    scheduleJarvisHistoryRecord(req.authPayload, parsed.data.rawText, payload);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -138,17 +145,18 @@ export async function preview(
 
     const shopId = req.studioContext.studioId;
     const hasImages = Boolean(parsed.data.images?.length);
+    const auditUserId = authService.resolveAuditUserId(req.authPayload);
 
     if (!hasImages) {
       const routed = await jarvisIntentRouter.tryRouteJarvisByIntent(
         parsed.data.rawText,
         shopId,
-        req.user.id,
+        auditUserId,
         undefined,
         req.user.role,
       );
       if (routed) {
-        scheduleJarvisHistoryRecord(req.user.id, parsed.data.rawText, routed);
+        scheduleJarvisHistoryRecord(req.authPayload, parsed.data.rawText, routed);
         res.json(routed);
         return;
       }
@@ -158,7 +166,7 @@ export async function preview(
       rawText: parsed.data.rawText,
       images: parsed.data.images,
     });
-    scheduleJarvisHistoryRecord(req.user.id, parsed.data.rawText, result);
+    scheduleJarvisHistoryRecord(req.authPayload, parsed.data.rawText, result);
     res.json(result);
   } catch (err) {
     next(err);
@@ -233,7 +241,10 @@ export async function approve(
     if (!parsed.success) {
       throw new AppError(`Invalid approval payload: ${parsed.error.message}`, 400);
     }
-    const committed = await jarvisService.approveJarvisItems(req.user.id, parsed.data);
+    const committed = await jarvisService.approveJarvisItems(
+      authService.resolveAuditUserId(req.authPayload),
+      parsed.data,
+    );
     res.json({ committed });
   } catch (err) {
     next(err);
@@ -277,7 +288,10 @@ export async function promoteSuggestion(
     if (!id || Array.isArray(id)) {
       throw new AppError("Suggestion id required", 400);
     }
-    await jarvisService.promoteSuggestion(id, req.user.id);
+    await jarvisService.promoteSuggestion(
+      id,
+      authService.resolveAuditUserId(req.authPayload),
+    );
     res.json({ ok: true });
   } catch (err) {
     next(err);

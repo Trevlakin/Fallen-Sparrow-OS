@@ -11,6 +11,7 @@ import {
   UpdateSopSchema,
 } from "../validators/sopValidators.js";
 import * as sopService from "../services/sopService.js";
+import * as authService from "../services/authService.js";
 import { AppError } from "../utils/errors.js";
 
 const historyQuerySchema = z.object({
@@ -217,7 +218,7 @@ export async function completeItem(
       throw new AppError("sessionDate required (YYYY-MM-DD)", 400);
     }
     await sopService.completeItem(itemId, parsed.data.sessionDate, {
-      userId: req.user.id,
+      userId: authService.resolveAuditUserId(req.authPayload),
     });
     res.status(204).send();
   } catch (err) {

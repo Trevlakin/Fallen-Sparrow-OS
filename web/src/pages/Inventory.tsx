@@ -4,11 +4,7 @@ import {
 } from "@fallen-sparrow/shared/constants";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  useAuth,
-  useIsManager,
-  useIsOwner,
-} from "@/context/AuthContext";
+import { useIsManager, useIsOwner } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/lib/api";
@@ -185,10 +181,9 @@ const emptyForm: ItemFormState = {
 };
 
 export function InventoryPage() {
-  const { user } = useAuth();
   const isManager = useIsManager();
   const isOwner = useIsOwner();
-  const isArtist = user?.role === "ARTIST";
+  const canAdjustStock = isManager;
   const { showToast } = useToast();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -536,7 +531,7 @@ export function InventoryPage() {
               {item.name}
             </button>
             <div className="inventory-adjuster">
-              {!isArtist && (
+              {canAdjustStock && (
                 <button
                   type="button"
                   className="inventory-adj-btn"
@@ -552,7 +547,7 @@ export function InventoryPage() {
                 </span>
                 <span className="inventory-stock-unit">{item.unit}</span>
               </div>
-              {!isArtist && (
+              {canAdjustStock && (
                 <button
                   type="button"
                   className="inventory-adj-btn"
@@ -806,7 +801,7 @@ export function InventoryPage() {
             </span>
 
             <div className="inventory-adjuster inventory-adjuster-lg">
-              {!isArtist && (
+              {canAdjustStock && (
                 <button
                   type="button"
                   className="inventory-adj-btn inventory-adj-btn-lg"
@@ -823,7 +818,7 @@ export function InventoryPage() {
                 </span>
                 <span className="inventory-stock-unit">{detailItem.unit}</span>
               </div>
-              {!isArtist && (
+              {canAdjustStock && (
                 <button
                   type="button"
                   className="inventory-adj-btn inventory-adj-btn-lg"

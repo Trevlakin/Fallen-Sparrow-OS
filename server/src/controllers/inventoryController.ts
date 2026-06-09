@@ -3,6 +3,7 @@ import { INVENTORY_CATEGORY_KEYS } from "@fallen-sparrow/shared/constants";
 import { z } from "zod";
 import * as inventoryRepo from "../repos/inventoryRepo.js";
 import * as inventoryService from "../services/inventoryService.js";
+import * as authService from "../services/authService.js";
 import { AppError } from "../utils/errors.js";
 
 const categorySchema = z.enum(INVENTORY_CATEGORY_KEYS);
@@ -152,7 +153,7 @@ export async function adjust(
       quantity: parsed.data.quantity,
       type: parsed.data.type,
       notes: parsed.data.notes,
-      createdBy: req.user?.id,
+      createdBy: authService.resolveAuditUserId(req.authPayload),
     });
 
     const item = await inventoryRepo.getInventoryItem(id);

@@ -500,7 +500,7 @@ export async function importAppointmentsCsv(csvString: string): Promise<ImportRe
 
 export async function importExpensesCsv(
   csvString: string,
-  loggedByUserId: string,
+  loggedByUserId?: string,
 ): Promise<ImportResult> {
   const { headers, rows } = parseCsvToRows(csvString);
   const format = detectCsvFormat(headers);
@@ -555,7 +555,7 @@ export async function importExpensesCsv(
 export async function importExpensesCsvWithMapping(
   csvString: string,
   mapping: ExpenseColumnMapping,
-  loggedByUserId: string,
+  loggedByUserId?: string,
 ): Promise<ImportResult> {
   const { headers, rows } = parseCsvToRows(csvString);
   const result: ImportResult = { imported: 0, skipped: 0, errors: [] };

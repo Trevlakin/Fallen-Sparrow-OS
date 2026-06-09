@@ -528,7 +528,7 @@ Recent briefing: ${context.recentContext}`;
 
 export async function parseJarvisInput(input: {
   shopId: string;
-  userId: string;
+  userId?: string;
   rawText: string;
   images?: { mediaType: string; base64Data: string }[];
   timezone?: string;
@@ -939,7 +939,7 @@ export const ApprovePayloadSchema = z.object({
 export type ApprovePayload = z.infer<typeof ApprovePayloadSchema>;
 
 export async function approveJarvisItems(
-  userId: string,
+  userId: string | undefined,
   payload: ApprovePayload,
 ): Promise<{
   expenses: number;
@@ -1027,7 +1027,7 @@ export async function approveJarvisItems(
 
 export async function promoteSuggestion(
   suggestionId: string,
-  userId: string,
+  userId: string | undefined,
 ): Promise<void> {
   const row = await suggestionRepo.findById(suggestionId);
   if (!row || row.status !== "pending") {
@@ -1146,7 +1146,7 @@ export interface ExpenseLogResult {
 }
 
 export async function logExpenseDirect(
-  userId: string,
+  userId: string | undefined,
   rawText: string,
   todayISO: string,
 ): Promise<ExpenseLogResult> {

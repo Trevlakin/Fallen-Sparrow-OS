@@ -48,6 +48,7 @@ inventoryRouter.post(
   "/:id/adjust",
   requireAuth,
   enforceTenant,
+  requireManager,
   inventoryController.adjust,
 );
 

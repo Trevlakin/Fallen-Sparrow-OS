@@ -81,7 +81,7 @@ async function findMemberByNamePrefix(name: string) {
 
 export async function tryExecuteTeamCommand(
   rawText: string,
-  changedByUserId: string,
+  changedByUserId?: string,
 ): Promise<TeamCommandResult | null> {
   const text = normalizeCommand(rawText);
   if (!text) return null;

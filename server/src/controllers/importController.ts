@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as csvImportService from "../services/csvImportService.js";
 import * as pnlImportHistoryService from "../services/pnlImportHistoryService.js";
 import * as porterIngestionService from "../services/porterIngestionService.js";
+import * as authService from "../services/authService.js";
 import { AppError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
 import { getCsvImportPayload } from "../utils/csvUpload.js";
@@ -36,10 +37,10 @@ const importBodySchema = z.object({
 async function recordPnlImportIfNeeded(
   format: "expenses" | "appointments" | "porter" | undefined,
   fileName: string | undefined,
-  userId: string,
+  userId: string | undefined,
   result: csvImportService.ImportResult,
 ): Promise<void> {
-  if (!format || format === "porter" || result.imported <= 0) return;
+  if (!userId || !format || format === "porter" || result.imported <= 0) return;
   const importType = format === "expenses" ? "expenses" : "sales";
   try {
     await pnlImportHistoryService.recordSuccessfulCsvImport({
@@ -101,6 +102,7 @@ export async function importCsv(
     }
 
     const { csv, format, mapping, fileName } = parsed.data;
+    const auditUserId = authService.resolveAuditUserId(req.authPayload);
 
     if (format === "expenses" && mapping) {
       const expenseMapping = expenseMappingSchema.parse(mapping);
@@ -113,9 +115,9 @@ export async function importCsv(
       const result = await csvImportService.importExpensesCsvWithMapping(
         csv,
         expenseMapping,
-        req.user.id,
+        auditUserId,
       );
-      await recordPnlImportIfNeeded(format, fileName, req.user.id, result);
+      await recordPnlImportIfNeeded(format, fileName, auditUserId, result);
       res.json(result);
       return;
     }
@@ -133,7 +135,7 @@ export async function importCsv(
         csv,
         appointmentMapping,
       );
-      await recordPnlImportIfNeeded(format, fileName, req.user.id, result);
+      await recordPnlImportIfNeeded(format, fileName, auditUserId, result);
       res.json(result);
       return;
     }
@@ -150,13 +152,13 @@ export async function importCsv(
     switch (detected) {
       case "appointments": {
         const result = await csvImportService.importAppointmentsCsv(csv);
-        await recordPnlImportIfNeeded("appointments", fileName, req.user.id, result);
+        await recordPnlImportIfNeeded("appointments", fileName, auditUserId, result);
         res.json(result);
         return;
       }
       case "expenses": {
-        const result = await csvImportService.importExpensesCsv(csv, req.user.id);
-        await recordPnlImportIfNeeded("expenses", fileName, req.user.id, result);
+        const result = await csvImportService.importExpensesCsv(csv, auditUserId);
+        await recordPnlImportIfNeeded("expenses", fileName, auditUserId, result);
         res.json(result);
         return;
       }

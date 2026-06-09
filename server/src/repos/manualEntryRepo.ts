@@ -15,7 +15,7 @@ export interface InsertManualExpenseInput {
   category: string;
   description: string;
   expenseDate: Date;
-  loggedByUserId: string;
+  loggedByUserId?: string;
   needsReview?: boolean;
 }
 

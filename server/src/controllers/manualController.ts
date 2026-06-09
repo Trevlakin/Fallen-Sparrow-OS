@@ -4,6 +4,7 @@ import { EXPENSE_CATEGORIES } from "@fallen-sparrow/shared/constants";
 import { SCHEMA_SERVICE_TYPES } from "@fallen-sparrow/shared/serviceTypes";
 import * as manualEntryRepo from "../repos/manualEntryRepo.js";
 import * as manualSaleService from "../services/manualSaleService.js";
+import * as authService from "../services/authService.js";
 import { AppError } from "../utils/errors.js";
 
 const categoryKeys = Object.keys(EXPENSE_CATEGORIES) as [
@@ -42,7 +43,7 @@ export async function createManualExpense(
       category: parsed.data.category,
       description: parsed.data.description,
       expenseDate: new Date(`${parsed.data.expenseDate}T12:00:00`),
-      loggedByUserId: req.user.id,
+      loggedByUserId: authService.resolveAuditUserId(req.authPayload),
     });
 
     res.json({ ok: true, expenseId });
