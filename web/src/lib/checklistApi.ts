@@ -1,4 +1,4 @@
-import { getTodayEastern } from "@fallen-sparrow/shared";
+import { getStudioDay } from "@fallen-sparrow/shared";
 import { getApiBase } from "./apiBase.js";
 import { isPinSession } from "./pinSession.js";
 
@@ -165,8 +165,9 @@ export const checklistApi = {
     }),
 };
 
+/** Studio day (4 AM Eastern cutoff). Must match the server's session date rule. */
 export function todayISO(): string {
-  return getTodayEastern();
+  return getStudioDay();
 }
 
 export function formatChecklistTime(iso: string | null): string {

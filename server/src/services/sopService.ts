@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import type { UserRole, TeamMemberRole } from "@fallen-sparrow/shared/constants";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
-import { formatDateInTimezone } from "../lib/timezone.js";
+import { getStudioDay } from "@fallen-sparrow/shared";
 import * as sopRepo from "../repos/sopRepo.js";
 
 export interface RoleCompletionStatus {
@@ -41,7 +41,7 @@ function roleLabel(role: UserRole | null, roles: TeamMemberRole[]): string {
 }
 
 function formatDateISO(date: Date, timezone: string): string {
-  return formatDateInTimezone(date, timezone);
+  return getStudioDay(date, timezone);
 }
 
 function addDaysISO(dateISO: string, delta: number): string {

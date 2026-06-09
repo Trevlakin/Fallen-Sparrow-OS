@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { getStudioDay } from "@fallen-sparrow/shared";
 import { env } from "../config/env.js";
 import * as extraTaskService from "../services/extraTaskService.js";
 import { AppError } from "../utils/errors.js";
@@ -25,9 +26,7 @@ const updateStatusSchema = z.object({
 });
 
 function todayISO(): string {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: env.DEFAULT_TIMEZONE,
-  });
+  return getStudioDay(new Date(), env.DEFAULT_TIMEZONE);
 }
 
 export async function listTodayExtraTasks(

@@ -52,6 +52,14 @@ export async function insertTeamMemberCompletion(input: {
   });
 }
 
+/** Re-stamp an existing completion row to "now" (heals rows blocked by the unique index). */
+export async function touchTeamMemberCompletion(id: string): Promise<void> {
+  await db
+    .update(sopCompletions)
+    .set({ completedAt: new Date() })
+    .where(eq(sopCompletions.id, id));
+}
+
 export async function deleteTeamMemberCompletion(
   itemId: string,
   teamMemberId: string,

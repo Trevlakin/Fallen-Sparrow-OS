@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { USER_ROLES, type UserRole } from "@fallen-sparrow/shared/constants";
+import { getStudioDay } from "@fallen-sparrow/shared";
 import { env } from "../config/env.js";
 import {
   CreateChecklistItemSchema,
@@ -28,9 +29,7 @@ function parseRole(role: string | null | undefined): UserRole | null {
 }
 
 function todayISO(): string {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: env.DEFAULT_TIMEZONE,
-  });
+  return getStudioDay(new Date(), env.DEFAULT_TIMEZONE);
 }
 
 export async function listSops(

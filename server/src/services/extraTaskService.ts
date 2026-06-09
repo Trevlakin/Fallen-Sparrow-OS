@@ -1,10 +1,10 @@
-import { getTodayInTimezone } from "@fallen-sparrow/shared";
+import { getStudioDay } from "@fallen-sparrow/shared";
 import { env } from "../config/env.js";
 import * as extraTaskRepo from "../repos/extraTaskRepo.js";
 import { AppError } from "../utils/errors.js";
 
 function todayISO(): string {
-  return getTodayInTimezone(env.DEFAULT_TIMEZONE);
+  return getStudioDay(new Date(), env.DEFAULT_TIMEZONE);
 }
 
 export async function listTodayExtraTasks(sessionDate?: string) {

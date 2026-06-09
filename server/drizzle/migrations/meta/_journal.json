@@ -120,6 +120,13 @@
       "when": 1780002200000,
       "tag": "0016_artist_payout_method",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780002300000,
+      "tag": "0017_studio_day_session_dates",
+      "breakpoints": true
     }
   ]
 }

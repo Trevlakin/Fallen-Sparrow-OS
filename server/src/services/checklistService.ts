@@ -145,7 +145,12 @@ export async function completeChecklistItem(
     teamMemberId,
     sessionDate,
   );
-  if (existing) return;
+  if (existing) {
+    // Row exists for this session but may carry a stale timestamp that fails
+    // the studio-day display check; re-stamp it so the item reads as done.
+    await sopCompletionRepo.touchTeamMemberCompletion(existing.id);
+    return;
+  }
   await sopCompletionRepo.insertTeamMemberCompletion({
     itemId,
     teamMemberId,
