@@ -200,20 +200,6 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        {canViewFinancials && (
-          <div className="sidebar-bottom">
-            <NavLink
-              to="/roi-calculator"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <span className="nav-link-wrap">
-                <span>ROI Calculator</span>
-              </span>
-            </NavLink>
-          </div>
-        )}
         <div className="sidebar-user">
           <div className="avatar-circle">{initials}</div>
           <div>

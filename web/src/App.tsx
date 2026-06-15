@@ -22,7 +22,6 @@ import { StrategicNotesPage } from "@/pages/StrategicNotes";
 import { ChecklistPage } from "@/pages/Checklist";
 import { OfflinePage } from "@/pages/Offline";
 import { InventoryPage } from "@/pages/Inventory";
-import { ROICalculatorPage } from "@/pages/ROICalculator";
 import { FollowupsPage } from "@/pages/Followups";
 
 // Desktop vs mobile home: at >=768px, "/" is the full KPI dashboard; below 768px, "/"
@@ -170,17 +169,6 @@ export function App() {
                     deniedMessage="Settings are owner-only"
                   >
                     <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="roi-calculator"
-                element={
-                  <ProtectedRoute
-                    roles={["OWNER", "MANAGER"]}
-                    redirectTo="/jarvis"
-                  >
-                    <ROICalculatorPage />
                   </ProtectedRoute>
                 }
               />
