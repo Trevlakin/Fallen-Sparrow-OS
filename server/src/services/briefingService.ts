@@ -5,7 +5,7 @@ import { env, hasBriefingRecipient as envHasBriefingRecipient } from "../config/
 import * as briefingRepo from "../repos/briefingRepo.js";
 import * as emailService from "./emailService.js";
 import * as briefingSynthesisService from "./briefingSynthesisService.js";
-import type { BriefingPeriod } from "./briefingSynthesisService.js";
+import type { BriefingPeriod, OnDemandBriefingPeriod } from "./briefingSynthesisService.js";
 import {
   addDaysToISO,
   endOfDayUTC,
@@ -215,4 +215,104 @@ export async function getLatestBriefing(briefingType?: string) {
 
 export async function getBriefingHistory(limit = 30, briefingType?: string) {
   return briefingRepo.listBriefingHistory(limit, briefingType);
+}
+
+const ON_DEMAND_CACHE_TTL_MS = 60 * 60 * 1000;
+
+type OnDemandCacheEntry = {
+  narrative: string;
+  generatedAt: Date;
+  hasData: boolean;
+  period: OnDemandBriefingPeriod;
+};
+
+const onDemandBriefingCache = new Map<string, OnDemandCacheEntry>();
+
+function onDemandCacheKey(shopId: string, period: OnDemandBriefingPeriod): string {
+  return `${shopId}:${period}`;
+}
+
+export function clearOnDemandBriefingCache(
+  shopId: string,
+  period?: OnDemandBriefingPeriod,
+): void {
+  if (period) {
+    onDemandBriefingCache.delete(onDemandCacheKey(shopId, period));
+    return;
+  }
+  for (const key of onDemandBriefingCache.keys()) {
+    if (key.startsWith(`${shopId}:`)) {
+      onDemandBriefingCache.delete(key);
+    }
+  }
+}
+
+export async function generateOnDemandBriefing(
+  shopId: string,
+  period: OnDemandBriefingPeriod,
+  timezone: string,
+  options?: { refresh?: boolean },
+): Promise<{
+  narrative: string;
+  generatedAt: string;
+  period: OnDemandBriefingPeriod;
+  hasData: boolean;
+  cached: boolean;
+}> {
+  const cacheKey = onDemandCacheKey(shopId, period);
+  const cached = onDemandBriefingCache.get(cacheKey);
+  if (!options?.refresh && cached) {
+    const ageMs = Date.now() - cached.generatedAt.getTime();
+    if (ageMs < ON_DEMAND_CACHE_TTL_MS) {
+      return {
+        narrative: cached.narrative,
+        generatedAt: cached.generatedAt.toISOString(),
+        period: cached.period,
+        hasData: cached.hasData,
+        cached: true,
+      };
+    }
+  }
+
+  const snapshot = await briefingSynthesisService.assembleOnDemandSnapshot(
+    shopId,
+    period,
+    timezone,
+  );
+  const hasData = briefingSynthesisService.snapshotHasBriefingData(snapshot);
+
+  if (!hasData) {
+    const generatedAt = new Date();
+    const emptyNarrative = "";
+    onDemandBriefingCache.set(cacheKey, {
+      narrative: emptyNarrative,
+      generatedAt,
+      hasData: false,
+      period,
+    });
+    return {
+      narrative: emptyNarrative,
+      generatedAt: generatedAt.toISOString(),
+      period,
+      hasData: false,
+      cached: false,
+    };
+  }
+
+  const narrative = await briefingSynthesisService.synthesizeOnDemandOracleBriefing(snapshot);
+  const generatedAt = new Date();
+  onDemandBriefingCache.set(cacheKey, {
+    narrative,
+    generatedAt,
+    hasData: true,
+    period,
+  });
+
+  return {
+    narrative,
+    generatedAt: generatedAt.toISOString(),
+    period,
+    hasData: true,
+    cached: false,
+  };
 }

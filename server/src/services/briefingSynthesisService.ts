@@ -20,12 +20,44 @@ import {
   daysAgoISO,
   endOfDayUTC,
   startOfDayUTC,
+  todayISOInTimezone,
 } from "../lib/timezone.js";
 import * as checklistService from "./checklistService.js";
 import * as extraTaskService from "./extraTaskService.js";
 import * as followupService from "./followupService.js";
 
 export type BriefingPeriod = "daily" | "weekly" | "monthly";
+
+export type OnDemandBriefingPeriod = "24h" | "7d" | "30d";
+
+const ORACLE_BRIEFING_SYSTEM_PROMPT = `You are Oracle, the AI operations assistant for this business.
+Generate a concise operations briefing based on the data provided.
+Format your response EXACTLY as follows:
+- Use bullet points for every item (• character)
+- ✅ for positive items
+- ⚠️ for items to watch
+- 🔴 for items needing immediate action
+- Group by: Revenue, Team, Operations, Follow-ups, Open Items
+- Keep each bullet to one sentence
+- End with one sentence summary called 'Bottom Line'
+- Never use numbered lists
+- Never use markdown headers`;
+
+export function snapshotHasBriefingData(snapshot: BriefingDataSnapshot): boolean {
+  const metrics = snapshot.metrics as Record<string, unknown>;
+  const revenue = Number(metrics["totalRevenue"] ?? metrics["revenue"] ?? 0);
+  const appointments = Number(metrics["appointmentCount"] ?? metrics["appointments"] ?? 0);
+  return (
+    revenue > 0 ||
+    appointments > 0 ||
+    snapshot.recentExpenses.length > 0 ||
+    snapshot.openIncidents.length > 0 ||
+    snapshot.openTasks.length > 0 ||
+    snapshot.recentNotes.length > 0 ||
+    snapshot.followupsDueToday.length > 0 ||
+    snapshot.openExtraTasks.length > 0
+  );
+}
 
 export type BriefingDataSnapshot = {
   period: BriefingPeriod;
@@ -182,6 +214,35 @@ export async function synthesizeBriefing(
   });
 
   return { narrativeText, briefingId: row.id };
+}
+
+export async function synthesizeOnDemandOracleBriefing(
+  snapshot: BriefingDataSnapshot,
+): Promise<string> {
+  const userMessage = `DATA SNAPSHOT:\n${JSON.stringify(snapshot, null, 2)}`;
+  const rawNarrative = await callClaude({
+    systemPrompt: ORACLE_BRIEFING_SYSTEM_PROMPT,
+    userMessage,
+    maxTokens: 1000,
+  });
+  return rawNarrative.trim();
+}
+
+export async function assembleOnDemandSnapshot(
+  shopId: string,
+  period: OnDemandBriefingPeriod,
+  timezone: string,
+): Promise<BriefingDataSnapshot> {
+  const todayISO = todayISOInTimezone(timezone);
+  if (period === "24h") {
+    return assembleDailySnapshot(shopId, todayISO, timezone);
+  }
+  if (period === "7d") {
+    const startISO = daysAgoISO(6, timezone, todayISO);
+    return assembleWeeklySnapshot(shopId, startISO, todayISO, timezone);
+  }
+  const startISO = daysAgoISO(29, timezone, todayISO);
+  return assembleWeeklySnapshot(shopId, startISO, todayISO, timezone);
 }
 
 export async function assembleDailySnapshot(

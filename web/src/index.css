@@ -1459,6 +1459,76 @@ textarea {
   margin-bottom: 0.45rem;
 }
 
+.briefing-bullet-positive {
+  color: #22c55e;
+}
+
+.briefing-bullet-watch {
+  color: #f59e0b;
+}
+
+.briefing-bullet-urgent {
+  color: #ef4444;
+}
+
+.briefing-header {
+  align-items: center;
+}
+
+.briefing-refresh-btn {
+  font-size: 0.9rem;
+}
+
+.briefing-last-updated {
+  margin: 0 0 1rem;
+}
+
+.briefing-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.briefing-period-tab {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-muted);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.briefing-period-tab.active {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.briefing-loading {
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.briefing-loading-pulse {
+  animation: briefing-pulse 1.5s ease-in-out infinite;
+  color: var(--text-muted);
+}
+
+@keyframes briefing-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.briefing-empty-state {
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  color: var(--text-muted);
+}
+
 /* Toast stack */
 .toast-stack {
   position: fixed;
@@ -1721,6 +1791,59 @@ textarea {
 .settings-section {
   margin-top: 1.5rem;
   max-width: 640px;
+}
+
+.account-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.account-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.account-inline-form {
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.account-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.form-error {
+  color: #ef4444;
+  font-size: 0.9rem;
+}
+
+.form-success {
+  color: #22c55e;
+  font-size: 0.9rem;
+}
+
+.danger-text {
+  color: #ef4444;
+}
+
+.employee-pin-row.inactive {
+  opacity: 0.65;
+}
+
+.inactive-tag {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 .integrations-section {

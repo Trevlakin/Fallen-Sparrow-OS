@@ -1,5 +1,5 @@
 /**
- * Renders briefing narrative as scannable bullets (new format) or legacy prose.
+ * Renders briefing narrative as scannable bullets with Oracle emoji styling.
  */
 
 function parseBriefingBullets(text: string): string[] {
@@ -8,9 +8,11 @@ function parseBriefingBullets(text: string): string[] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  const marked = lines.filter((line) => /^[-*•]\s+/.test(line));
+  const marked = lines.filter((line) => /^[-*•✅⚠️🔴]/.test(line));
   if (marked.length > 0) {
-    return lines.map((line) => line.replace(/^[-*•]\s+/, "").trim()).filter(Boolean);
+    return lines
+      .map((line) => line.replace(/^[-*•]\s+/, "").trim())
+      .filter(Boolean);
   }
 
   const paragraphs = text
@@ -32,6 +34,13 @@ function parseBriefingBullets(text: string): string[] {
   return text.trim() ? [text.trim()] : [];
 }
 
+function bulletTone(item: string): "positive" | "watch" | "urgent" | "default" {
+  if (item.startsWith("✅")) return "positive";
+  if (item.startsWith("⚠️")) return "watch";
+  if (item.startsWith("🔴")) return "urgent";
+  return "default";
+}
+
 export function BriefingNarrative({ text, className = "" }: { text: string; className?: string }) {
   const bullets = parseBriefingBullets(text);
   if (bullets.length === 0) {
@@ -41,7 +50,9 @@ export function BriefingNarrative({ text, className = "" }: { text: string; clas
   return (
     <ul className={`briefing-bullets${className ? ` ${className}` : ""}`}>
       {bullets.map((item, index) => (
-        <li key={index}>{item}</li>
+        <li key={index} className={`briefing-bullet-${bulletTone(item)}`}>
+          {item}
+        </li>
       ))}
     </ul>
   );

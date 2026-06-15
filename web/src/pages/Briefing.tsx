@@ -1,157 +1,129 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { BriefingNarrative } from "@/components/BriefingNarrative";
-import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/lib/api";
-import { useIsOwner } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
 
-interface Briefing {
-  id: string;
-  narrative: string | null;
-  dataSnapshot: {
-    followupsDueToday?: { clientName: string; followupType: string }[];
-  } | null;
-  generatedAt: string | null;
+type BriefingPeriod = "24h" | "7d" | "30d";
+
+interface OnDemandBriefing {
+  narrative: string;
+  generatedAt: string;
+  period: BriefingPeriod;
+  hasData: boolean;
+  cached: boolean;
+}
+
+const PERIOD_TABS: { id: BriefingPeriod; label: string }[] = [
+  { id: "24h", label: "Last 24 hours" },
+  { id: "7d", label: "Last 7 days" },
+  { id: "30d", label: "Last 30 days" },
+];
+
+function formatLastUpdated(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  const time = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return isToday ? `Today at ${time}` : date.toLocaleString();
 }
 
 export function BriefingPage() {
-  const isOwner = useIsOwner();
-  const { showToast } = useToast();
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [period, setPeriod] = useState<BriefingPeriod>("24h");
+  const [briefing, setBriefing] = useState<OnDemandBriefing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const loadBriefing = useCallback(async (selectedPeriod: BriefingPeriod, refresh = false) => {
+    if (refresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const res = await api.get<Briefing>("/api/briefing/latest");
+      const res = await api.post<OnDemandBriefing>("/api/briefing/generate", {
+        period: selectedPeriod,
+        refresh,
+      });
       setBriefing(res);
     } catch {
       setBriefing(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    void load();
   }, []);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    try {
-      await api.post("/api/briefing/generate", { type: "daily" });
-      await load();
-      showToast("Briefing generated", "success");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Generation failed", "error");
-    } finally {
-      setGenerating(false);
-    }
+  useEffect(() => {
+    void loadBriefing(period);
+  }, [period, loadBriefing]);
+
+  const handleRefresh = () => {
+    void loadBriefing(period, true);
   };
 
+  const showEmpty =
+    !loading &&
+    !refreshing &&
+    (!briefing || !briefing.hasData || !briefing.narrative.trim());
+
   return (
-    <div className="page">
-      <div className="page-header-row">
-        <h1>AI Briefing</h1>
-        {isOwner && (
-          <button
-            type="button"
-            className="btn-amber"
-            onClick={() => void handleGenerate()}
-            disabled={generating}
-          >
-            {generating ? "Generating..." : "Generate Briefing"}
-          </button>
-        )}
+    <div className="page briefing-page">
+      <div className="page-header-row briefing-header">
+        <h1>ORACLE BRIEFING</h1>
+        <button
+          type="button"
+          className="btn-ghost briefing-refresh-btn"
+          onClick={handleRefresh}
+          disabled={loading || refreshing}
+          aria-label="Refresh briefing"
+        >
+          Refresh ↺
+        </button>
       </div>
-      {loading && <p className="text-muted">Loading...</p>}
-      {!loading && briefing && (briefing.dataSnapshot?.followupsDueToday?.length ?? 0) > 0 && (
-        <Link to="/followups" className="mobile-nudge-badge briefing-followups-alert">
-          <span className="mobile-nudge-count">
-            {briefing.dataSnapshot!.followupsDueToday!.length}
-          </span>
-          <span>
-            client follow-up
-            {briefing.dataSnapshot!.followupsDueToday!.length === 1 ? "" : "s"} due today
-          </span>
-          <span className="mobile-nudge-arrow">→</span>
-        </Link>
+
+      {briefing?.generatedAt && !loading && (
+        <p className="briefing-last-updated text-muted">
+          Last updated: {formatLastUpdated(briefing.generatedAt)}
+        </p>
       )}
-      {!loading && !briefing && (
-        <EmptyState
-          icon="📰"
-          title="No briefing yet"
-          description="Generate your first AI briefing to get a daily digest of shop metrics, nudges, and action items."
-          ctaLabel={isOwner ? "Generate Now" : undefined}
-          onCtaClick={isOwner ? () => void handleGenerate() : undefined}
-        />
+
+      <div className="briefing-period-tabs" role="tablist" aria-label="Briefing period">
+        {PERIOD_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={period === tab.id}
+            className={`briefing-period-tab${period === tab.id ? " active" : ""}`}
+            onClick={() => setPeriod(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {(loading || refreshing) && (
+        <div className="briefing-loading" aria-live="polite">
+          <span className="briefing-loading-pulse">Oracle is thinking...</span>
+        </div>
       )}
-      {briefing && (
-        <article className="briefing-card">
-          <p className="text-muted">
-            Generated{" "}
-            {briefing.generatedAt
-              ? new Date(briefing.generatedAt).toLocaleString()
-              : "n/a"}
+
+      {showEmpty && (
+        <div className="briefing-empty-state">
+          <p>
+            No data available for this period. Import sales data or log expenses to see your
+            first briefing.
           </p>
-          <BriefingNarrative text={briefing.narrative ?? ""} />
-          <BriefingFooterLinks narrative={briefing.narrative ?? ""} />
-          <details>
-            <summary>Structured snapshot</summary>
-            <pre>{JSON.stringify(briefing.dataSnapshot, null, 2)}</pre>
-          </details>
+        </div>
+      )}
+
+      {!loading && !refreshing && briefing?.narrative && briefing.hasData && (
+        <article className="briefing-card">
+          <BriefingNarrative text={briefing.narrative} />
         </article>
       )}
     </div>
-  );
-}
-
-function BriefingFooterLinks({ narrative }: { narrative: string }) {
-  const lower = narrative.toLowerCase();
-  const links: Array<{ label: string; to: string }> = [];
-
-  if (
-    lower.includes("inventory") ||
-    lower.includes("stock") ||
-    lower.includes("supply") ||
-    lower.includes("out of")
-  ) {
-    links.push({ label: "Low inventory mentioned? Inventory", to: "/inventory" });
-  }
-  if (
-    lower.includes("checklist") ||
-    lower.includes("sop") ||
-    lower.includes("incomplete")
-  ) {
-    links.push({ label: "Incomplete checklists? SOPs", to: "/sops" });
-  }
-  if (
-    lower.includes("commission") ||
-    lower.includes("payout") ||
-    lower.includes("payroll")
-  ) {
-    links.push({ label: "Commission due? P&L", to: "/pnl" });
-  }
-  if (
-    lower.includes("follow-up") ||
-    lower.includes("follow up") ||
-    lower.includes("check-in") ||
-    lower.includes("check in")
-  ) {
-    links.push({ label: "Client follow-ups due? Follow-ups", to: "/followups" });
-  }
-
-  if (links.length === 0) return null;
-
-  return (
-    <footer className="briefing-footer-links">
-      {links.map((link) => (
-        <Link key={link.to} to={link.to}>
-          {link.label} →
-        </Link>
-      ))}
-    </footer>
   );
 }

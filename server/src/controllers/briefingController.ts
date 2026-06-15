@@ -4,23 +4,29 @@ import { env } from "../config/env.js";
 import * as briefingService from "../services/briefingService.js";
 import { AppError } from "../utils/errors.js";
 
-const generateBodySchema = z.object({
-  type: z.enum(["daily", "weekly", "monthly"]),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  start: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  end: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  year: z.coerce.number().int().min(2000).max(2100).optional(),
-  month: z.coerce.number().int().min(1).max(12).optional(),
-});
+const generateBodySchema = z
+  .object({
+    type: z.enum(["daily", "weekly", "monthly"]).optional(),
+    period: z.enum(["24h", "7d", "30d"]).optional(),
+    refresh: z.boolean().optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    start: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    end: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    year: z.coerce.number().int().min(2000).max(2100).optional(),
+    month: z.coerce.number().int().min(1).max(12).optional(),
+  })
+  .refine((body) => Boolean(body.type || body.period), {
+    message: "type or period is required",
+  });
 
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
@@ -39,12 +45,23 @@ export async function generate(
   try {
     const parsed = generateBodySchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      throw new AppError("Invalid body: type daily|weekly|monthly required", 400);
+      throw new AppError("Invalid body: provide type (daily|weekly|monthly) or period (24h|7d|30d)", 400);
+    }
+
+    if (parsed.data.period) {
+      const result = await briefingService.generateOnDemandBriefing(
+        studioId(req),
+        parsed.data.period,
+        env.DEFAULT_TIMEZONE,
+        { refresh: parsed.data.refresh },
+      );
+      res.status(200).json(result);
+      return;
     }
 
     const result = await briefingService.generateBriefing(
       studioId(req),
-      parsed.data.type,
+      parsed.data.type!,
       env.DEFAULT_TIMEZONE,
       {
         dateISO: parsed.data.date,
