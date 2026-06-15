@@ -1,8 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 
+const DISMISS_KEY = "pwa_prompt_dismissed";
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+function isDismissed(): boolean {
+  try {
+    const stored = localStorage.getItem(DISMISS_KEY);
+    if (!stored) return false;
+    return Date.now() - parseInt(stored, 10) < DISMISS_DURATION_MS;
+  } catch {
+    return false;
+  }
+}
+
+function dismiss(): void {
+  try {
+    localStorage.setItem(DISMISS_KEY, Date.now().toString());
+  } catch {
+    // localStorage unavailable
+  }
+}
+
+function isInStandaloneMode(): boolean {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
 }
 
 export function PwaInstallPrompt() {
@@ -10,8 +38,7 @@ export function PwaInstallPrompt() {
   const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    const dismissed = sessionStorage.getItem("pwa_prompt_dismissed");
-    if (dismissed) return;
+    if (isInStandaloneMode() || isDismissed()) return;
 
     const handlePrompt = (e: Event) => {
       e.preventDefault();
@@ -34,11 +61,11 @@ export function PwaInstallPrompt() {
   }
 
   function handleDismiss() {
-    sessionStorage.setItem("pwa_prompt_dismissed", "1");
+    dismiss();
     setShow(false);
   }
 
-  if (!show) return null;
+  if (isInStandaloneMode() || isDismissed() || !show) return null;
 
   return (
     <div className="pwa-install-banner" role="alert">
