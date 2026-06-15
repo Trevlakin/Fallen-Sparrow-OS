@@ -31,3 +31,13 @@ export async function updatePasswordHash(
 ): Promise<void> {
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
 }
+
+export async function updateUserEmail(
+  userId: string,
+  email: string,
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ email: email.toLowerCase() })
+    .where(eq(users.id, userId));
+}

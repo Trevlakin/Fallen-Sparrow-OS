@@ -153,7 +153,7 @@ export const ROLE_PERMISSIONS: Record<TeamMemberRole, {
   admin: boolean;
 }> = {
   OWNER:       { dashboard: true,  pl: true,   jarvis: true,  checklist: true,  admin: true  },
-  MANAGER:     { dashboard: true,  pl: true,   jarvis: true,  checklist: true,  admin: false },
+  MANAGER:     { dashboard: true,  pl: true,   jarvis: true,  checklist: true,  admin: true  },
   FRONT_DESK:  { dashboard: false, pl: false,  jarvis: true,  checklist: true,  admin: false },
   ARTIST:      { dashboard: false, pl: false,  jarvis: true,  checklist: true,  admin: false },
   CLEANER:     { dashboard: false, pl: false,  jarvis: false, checklist: true,  admin: false },

@@ -42,13 +42,18 @@ export function SOPsPage() {
   const [loading, setLoading] = useState(true);
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [editSop, setEditSop] = useState<SopCardData | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+
   const [editOpen, setEditOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
+      const memberPath = showInactive
+        ? "/api/team-members?include_inactive=true"
+        : "/api/team-members";
       const [memberRes, sopRes] = await Promise.all([
-        api.get<{ teamMembers: TeamMemberRow[] }>("/api/team-members"),
+        api.get<{ teamMembers: TeamMemberRow[] }>(memberPath),
         api.get<{ sops: ApiSop[] }>("/api/sops"),
       ]);
       setTeamMembers(memberRes.teamMembers);
@@ -56,7 +61,7 @@ export function SOPsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     void loadAll();
@@ -141,7 +146,7 @@ export function SOPsPage() {
       "/api/team-members",
       input,
     );
-    showToast(`Employee created. PIN: ${res.pin}`, "success");
+    showToast(`Employee ${res.teamMember.displayName} created`, "success");
     emitData(DATA_EVENTS.sops);
     await loadAll();
     return { pin: res.pin };
@@ -150,6 +155,30 @@ export function SOPsPage() {
   const changePin = async (id: string, pin: string) => {
     await api.patch(`/api/team-members/${id}/pin`, { pin });
     showToast("PIN updated", "success");
+  };
+
+  const updateEmployee = async (
+    id: string,
+    input: { name: string; role: TeamMemberRole },
+  ) => {
+    await api.patch(`/api/team-members/${id}`, input);
+    showToast("Employee updated", "success");
+    emitData(DATA_EVENTS.sops);
+    await loadAll();
+  };
+
+  const deactivateEmployee = async (id: string) => {
+    await api.delete(`/api/team-members/${id}`);
+    showToast("Employee deactivated", "success");
+    emitData(DATA_EVENTS.sops);
+    await loadAll();
+  };
+
+  const deleteSop = async (id: string) => {
+    await api.delete(`/api/sops/${id}`);
+    showToast("SOP deactivated", "success");
+    emitData(DATA_EVENTS.sops);
+    await loadAll();
   };
 
   return (
@@ -178,7 +207,14 @@ export function SOPsPage() {
       {loading && <p className="text-muted">Loading SOPs...</p>}
 
       {!loading && isManager && (
-        <EmployeePinTable members={teamMembers} onChangePin={changePin} />
+        <EmployeePinTable
+          members={teamMembers}
+          showInactive={showInactive}
+          onToggleInactive={setShowInactive}
+          onChangePin={changePin}
+          onUpdateMember={updateEmployee}
+          onDeactivate={deactivateEmployee}
+        />
       )}
 
       {!loading &&
@@ -219,6 +255,7 @@ export function SOPsPage() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         onSave={saveSop}
+        onDelete={deleteSop}
       />
     </div>
   );

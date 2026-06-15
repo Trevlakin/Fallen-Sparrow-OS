@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import {
   TEAM_MEMBER_ROLE_LABELS,
   TEAM_MEMBER_ROLES,
@@ -10,12 +10,20 @@ export interface TeamMemberRow {
   name: string;
   displayName: string;
   role: TeamMemberRole;
+  isActive?: boolean;
   pinVisible: boolean;
 }
 
 interface EmployeePinTableProps {
   members: TeamMemberRow[];
+  showInactive: boolean;
+  onToggleInactive: (value: boolean) => void;
   onChangePin: (id: string, pin: string) => Promise<void>;
+  onUpdateMember: (
+    id: string,
+    input: { name: string; role: TeamMemberRole },
+  ) => Promise<void>;
+  onDeactivate: (id: string) => Promise<void>;
 }
 
 function initials(name: string): string {
@@ -26,12 +34,26 @@ function initials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function EmployeePinTable({ members, onChangePin }: EmployeePinTableProps) {
+export function EmployeePinTable({
+  members,
+  showInactive,
+  onToggleInactive,
+  onChangePin,
+  onUpdateMember,
+  onDeactivate,
+}: EmployeePinTableProps) {
   return (
     <section className="sops-panel">
       <div className="sops-panel-head">
         <h2>Employee PINs</h2>
-        <span className="sops-panel-note">Legion / Hector only</span>
+        <label className="checkbox-row sops-panel-note">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => onToggleInactive(e.target.checked)}
+          />
+          Show inactive
+        </label>
       </div>
       <ul className="employee-pin-list">
         {members.map((member) => (
@@ -39,6 +61,8 @@ export function EmployeePinTable({ members, onChangePin }: EmployeePinTableProps
             key={member.id}
             member={member}
             onChangePin={onChangePin}
+            onUpdateMember={onUpdateMember}
+            onDeactivate={onDeactivate}
           />
         ))}
       </ul>
@@ -49,14 +73,25 @@ export function EmployeePinTable({ members, onChangePin }: EmployeePinTableProps
 function EmployeePinRow({
   member,
   onChangePin,
+  onUpdateMember,
+  onDeactivate,
 }: {
   member: TeamMemberRow;
   onChangePin: (id: string, pin: string) => Promise<void>;
+  onUpdateMember: (
+    id: string,
+    input: { name: string; role: TeamMemberRole },
+  ) => Promise<void>;
+  onDeactivate: (id: string) => Promise<void>;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editingPin, setEditingPin] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [pin, setPin] = useState("");
+  const [name, setName] = useState(member.name);
+  const [role, setRole] = useState(member.role);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const inactive = member.isActive === false;
 
   const submitPin = async () => {
     if (!/^\d{4}$/.test(pin)) {
@@ -67,7 +102,7 @@ function EmployeePinRow({
     setError("");
     try {
       await onChangePin(member.id, pin);
-      setEditing(false);
+      setEditingPin(false);
       setPin("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change PIN");
@@ -76,21 +111,103 @@ function EmployeePinRow({
     }
   };
 
+  const submitProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onUpdateMember(member.id, { name: name.trim(), role });
+      setEditingProfile(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update employee");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!window.confirm(`Deactivate ${member.displayName}?`)) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onDeactivate(member.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deactivate employee");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <li className="employee-pin-row">
+    <li className={`employee-pin-row${inactive ? " inactive" : ""}`}>
       <span className="employee-avatar">{initials(member.displayName)}</span>
       <div className="employee-pin-main">
         <div className="employee-pin-top">
           <strong>{member.displayName}</strong>
           <span className="role-tag">{TEAM_MEMBER_ROLE_LABELS[member.role]}</span>
+          {inactive && <span className="role-tag inactive-tag">Inactive</span>}
         </div>
-        {!editing ? (
+
+        {editingProfile ? (
+          <form className="employee-profile-edit" onSubmit={(e) => void submitProfile(e)}>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+            <select value={role} onChange={(e) => setRole(e.target.value as TeamMemberRole)}>
+              {TEAM_MEMBER_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {TEAM_MEMBER_ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            <div className="employee-pin-actions">
+              <button type="submit" className="btn-primary btn-sm" disabled={saving}>
+                Save
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setEditingProfile(false);
+                  setName(member.name);
+                  setRole(member.role);
+                  setError("");
+                }}
+              >
+                Cancel
+              </button>
+              {!inactive && (
+                <button
+                  type="button"
+                  className="btn-text danger-text"
+                  disabled={saving}
+                  onClick={() => void handleDeactivate()}
+                >
+                  Deactivate
+                </button>
+              )}
+            </div>
+          </form>
+        ) : !editingPin ? (
           <div className="employee-pin-actions">
             <span className="pin-mask" aria-hidden>
               ●●●●
             </span>
-            <button type="button" className="btn-text" onClick={() => setEditing(true)}>
-              Change
+            <button type="button" className="btn-text" onClick={() => setEditingPin(true)}>
+              Change PIN
+            </button>
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => {
+                setEditingProfile(true);
+                setName(member.name);
+                setRole(member.role);
+              }}
+            >
+              Edit
             </button>
           </div>
         ) : (
@@ -114,16 +231,16 @@ function EmployeePinRow({
               type="button"
               className="btn-secondary btn-sm"
               onClick={() => {
-                setEditing(false);
+                setEditingPin(false);
                 setPin("");
                 setError("");
               }}
             >
               Cancel
             </button>
-            {error && <p className="form-error">{error}</p>}
           </div>
         )}
+        {error && <p className="form-error">{error}</p>}
       </div>
     </li>
   );

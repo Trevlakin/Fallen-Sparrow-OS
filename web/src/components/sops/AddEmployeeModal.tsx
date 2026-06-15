@@ -15,22 +15,21 @@ interface AddEmployeeModalProps {
   }) => Promise<{ pin: string }>;
 }
 
-function randomPin(): string {
-  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-}
 
 export function AddEmployeeModal({ open, onClose, onCreate }: AddEmployeeModalProps) {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<TeamMemberRole>("FRONT_DESK");
-  const [pin, setPin] = useState(randomPin());
+  const [pin, setPin] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setName("");
+      setFirstName("");
+      setLastName("");
       setRole("FRONT_DESK");
-      setPin(randomPin());
+      setPin("");
       setError("");
     }
   }, [open]);
@@ -39,15 +38,21 @@ export function AddEmployeeModal({ open, onClose, onCreate }: AddEmployeeModalPr
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError("Name is required");
+    if (!firstName.trim()) {
+      setError("First name is required");
       return;
     }
+    if (!/^\d{4}$/.test(pin)) {
+      setError("PIN must be exactly 4 digits");
+      return;
+    }
+    const name = lastName.trim()
+      ? `${firstName.trim()} ${lastName.trim()}`
+      : firstName.trim();
     setSaving(true);
     setError("");
     try {
-      const result = await onCreate({ name: name.trim(), role, pin });
-      setPin(result.pin);
+      await onCreate({ name, role, pin });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create employee");
@@ -67,8 +72,21 @@ export function AddEmployeeModal({ open, onClose, onCreate }: AddEmployeeModalPr
         <h2 id="add-employee-title">Add employee</h2>
         <form onSubmit={(e) => void submit(e)}>
           <label className="form-field">
-            <span>Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="First Last" />
+            <span>First name</span>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First name"
+              required
+            />
+          </label>
+          <label className="form-field">
+            <span>Last name (optional)</span>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last name"
+            />
           </label>
           <label className="form-field">
             <span>Role</span>
@@ -80,22 +98,21 @@ export function AddEmployeeModal({ open, onClose, onCreate }: AddEmployeeModalPr
               ))}
             </select>
           </label>
-          <div className="form-field">
-            <span>PIN</span>
-            <div className="pin-generate-row">
-              <strong className="generated-pin">{pin}</strong>
-              <button type="button" className="btn-text" onClick={() => setPin(randomPin())}>
-                Regenerate
-              </button>
-            </div>
-            <p className="text-muted form-hint">
-              Shown once. Note it down or change it after creating the employee.
-            </p>
-          </div>
+          <label className="form-field">
+            <span>PIN (4 digits)</span>
+            <input
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="0000"
+              required
+            />
+          </label>
           {error && <p className="form-error">{error}</p>}
           <div className="modal-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
-              Create employee
+              Save
             </button>
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel

@@ -99,7 +99,36 @@ export async function changePassword(
       parsed.data.currentPassword,
       parsed.data.newPassword,
     );
-    res.status(204).send();
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const changeEmailSchema = z.object({
+  currentPassword: z.string().min(1),
+  newEmail: z.string().email(),
+});
+
+export async function changeEmail(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError("Unauthorized", 401);
+    }
+    const parsed = changeEmailSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError("Invalid email payload", 400);
+    }
+    await authService.changeEmail(
+      req.user.id,
+      parsed.data.currentPassword,
+      parsed.data.newEmail,
+    );
+    res.json({ message: "Email updated successfully" });
   } catch (err) {
     next(err);
   }

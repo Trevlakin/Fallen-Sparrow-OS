@@ -34,12 +34,16 @@ export async function listActiveTeamMembers(): Promise<TeamMemberPublic[]> {
   return rows.map(toPublic);
 }
 
-export async function listAllTeamMembers(): Promise<TeamMemberPublic[]> {
-  const rows = await db
-    .select()
-    .from(teamMembers)
-    .where(eq(teamMembers.isActive, true))
-    .orderBy(asc(teamMembers.displayName));
+export async function listAllTeamMembers(
+  includeInactive = false,
+): Promise<TeamMemberPublic[]> {
+  const rows = includeInactive
+    ? await db.select().from(teamMembers).orderBy(asc(teamMembers.displayName))
+    : await db
+        .select()
+        .from(teamMembers)
+        .where(eq(teamMembers.isActive, true))
+        .orderBy(asc(teamMembers.displayName));
   return rows.map(toPublic);
 }
 

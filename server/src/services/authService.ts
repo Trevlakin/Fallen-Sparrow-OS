@@ -246,3 +246,27 @@ export async function changePassword(
   const passwordHash = await hashPassword(newPassword);
   await userRepo.updatePasswordHash(userId, passwordHash);
 }
+
+export async function changeEmail(
+  userId: string,
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> {
+  const user = await userRepo.findUserById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+  const normalizedEmail = newEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new AppError("Invalid email address", 400);
+  }
+  const existing = await userRepo.findUserByEmail(normalizedEmail);
+  if (existing && existing.id !== userId) {
+    throw new AppError("Email is already in use", 409);
+  }
+  await userRepo.updateUserEmail(userId, normalizedEmail);
+}

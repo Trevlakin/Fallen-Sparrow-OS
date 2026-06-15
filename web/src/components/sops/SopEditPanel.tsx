@@ -22,9 +22,10 @@ interface SopEditPanelProps {
     roles: TeamMemberRole[];
     items: EditItem[];
   }) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
 }
 
-export function SopEditPanel({ sop, open, onClose, onSave }: SopEditPanelProps) {
+export function SopEditPanel({ sop, open, onClose, onSave, onDelete }: SopEditPanelProps) {
   const [title, setTitle] = useState("");
   const [roles, setRoles] = useState<TeamMemberRole[]>([]);
   const [items, setItems] = useState<EditItem[]>([]);
@@ -163,6 +164,20 @@ export function SopEditPanel({ sop, open, onClose, onSave }: SopEditPanelProps) 
             <button type="submit" className="btn-primary" disabled={saving}>
               Save
             </button>
+            {sop?.id && onDelete && (
+              <button
+                type="button"
+                className="btn-secondary danger-text"
+                disabled={saving}
+                onClick={() => {
+                  if (!sop.id) return;
+                  if (!window.confirm(`Deactivate "${sop.title}"?`)) return;
+                  void onDelete(sop.id).then(onClose);
+                }}
+              >
+                Delete
+              </button>
+            )}
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>

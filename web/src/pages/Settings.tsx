@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { CsvColumnMapperModal } from "@/components/CsvColumnMapperModal";
 import { QuickBooksConnect } from "@/components/QuickBooksConnect";
 import { ImportResultBlock } from "@/components/ImportResultBlock";
@@ -37,16 +38,26 @@ const RATE_LABELS: Record<RateKey, string> = {
 };
 
 export function SettingsPage() {
+  const { user, refresh } = useAuth();
   const { showToast } = useToast();
   const { replayTour } = useTour(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailSuccess, setEmailSuccess] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
   const [csvMapperOpen, setCsvMapperOpen] = useState(false);
   const [pendingCsv, setPendingCsv] = useState<string | null>(null);
   const [appointmentsResult, setAppointmentsResult] = useState<ImportResult | null>(null);
@@ -85,8 +96,10 @@ export function SettingsPage() {
 
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
     if (newPassword !== confirmPassword) {
-      showToast("New passwords do not match", "error");
+      setPasswordError("New passwords do not match");
       return;
     }
     setChangingPassword(true);
@@ -95,14 +108,37 @@ export function SettingsPage() {
         currentPassword,
         newPassword,
       });
-      showToast("Password updated", "success");
+      setPasswordSuccess("Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setShowPasswordForm(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Password change failed", "error");
+      setPasswordError(err instanceof Error ? err.message : "Password change failed");
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleChangeEmail = async (e: FormEvent) => {
+    e.preventDefault();
+    setEmailError("");
+    setEmailSuccess("");
+    setChangingEmail(true);
+    try {
+      await api.post("/api/auth/change-email", {
+        currentPassword: emailCurrentPassword,
+        newEmail,
+      });
+      setEmailSuccess("Email updated successfully");
+      setNewEmail("");
+      setEmailCurrentPassword("");
+      setShowEmailForm(false);
+      await refresh();
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Email change failed");
+    } finally {
+      setChangingEmail(false);
     }
   };
 
@@ -296,44 +332,131 @@ export function SettingsPage() {
       )}
 
       <section className="settings-section account-section">
-        <h2>Account</h2>
-        <form onSubmit={(e) => void handleChangePassword(e)}>
-          <label className="form-field">
-            Current password
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </label>
-          <label className="form-field">
-            New password
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </label>
-          <label className="form-field">
-            Confirm new password
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </label>
-          <button type="submit" className="btn-dark" disabled={changingPassword}>
-            {changingPassword ? "Updating..." : "Change Password"}
+        <h2>Account Settings</h2>
+        <div className="account-settings-row">
+          <div>
+            <span className="account-label">Email address</span>
+            <p>{user?.email ?? "n/a"}</p>
+          </div>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => {
+              setShowEmailForm((v) => !v);
+              setShowPasswordForm(false);
+              setEmailError("");
+              setEmailSuccess("");
+            }}
+          >
+            Change
           </button>
-        </form>
+        </div>
+        {showEmailForm && (
+          <form className="account-inline-form" onSubmit={(e) => void handleChangeEmail(e)}>
+            <label className="form-field">
+              New email address
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                required
+              />
+            </label>
+            <label className="form-field">
+              Current password
+              <input
+                type="password"
+                value={emailCurrentPassword}
+                onChange={(e) => setEmailCurrentPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </label>
+            {emailError && <p className="form-error">{emailError}</p>}
+            {emailSuccess && <p className="form-success">{emailSuccess}</p>}
+            <div className="account-form-actions">
+              <button type="submit" className="btn-dark" disabled={changingEmail}>
+                {changingEmail ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowEmailForm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="account-settings-row">
+          <div>
+            <span className="account-label">Password</span>
+            <p>••••••••••••</p>
+          </div>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => {
+              setShowPasswordForm((v) => !v);
+              setShowEmailForm(false);
+              setPasswordError("");
+              setPasswordSuccess("");
+            }}
+          >
+            Change
+          </button>
+        </div>
+        {showPasswordForm && (
+          <form className="account-inline-form" onSubmit={(e) => void handleChangePassword(e)}>
+            <label className="form-field">
+              Current password
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </label>
+            <label className="form-field">
+              New password
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </label>
+            <label className="form-field">
+              Confirm password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </label>
+            {passwordError && <p className="form-error">{passwordError}</p>}
+            {passwordSuccess && <p className="form-success">{passwordSuccess}</p>}
+            <div className="account-form-actions">
+              <button type="submit" className="btn-dark" disabled={changingPassword}>
+                {changingPassword ? "Updating..." : "Save"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowPasswordForm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
       </section>
 
       {isDesktop && (

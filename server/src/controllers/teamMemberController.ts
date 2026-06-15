@@ -8,12 +8,13 @@ import * as teamMemberService from "../services/teamMemberService.js";
 import { AppError } from "../utils/errors.js";
 
 export async function listTeamMembers(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const teamMembers = await teamMemberService.listTeamMembersForAdmin();
+    const includeInactive = req.query["include_inactive"] === "true";
+    const teamMembers = await teamMemberService.listTeamMembersForAdmin(includeInactive);
     res.json({ teamMembers });
   } catch (err) {
     next(err);

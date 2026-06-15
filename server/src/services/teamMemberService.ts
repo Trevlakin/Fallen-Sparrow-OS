@@ -8,7 +8,7 @@ import * as pinChangeHistoryRepo from "../repos/pinChangeHistoryRepo.js";
 const PIN_SALT_ROUNDS = 10;
 
 export const DUPLICATE_PIN_MESSAGE =
-  "This PIN is already used by another employee. Choose a different PIN.";
+  "That PIN is already taken";
 
 export const AMBIGUOUS_PIN_MESSAGE =
   "This PIN is assigned to multiple employees. Contact a manager to reset PINs.";
@@ -102,8 +102,8 @@ export async function generateDisplayName(fullName: string): Promise<string> {
   return firstName;
 }
 
-export async function listTeamMembersForAdmin() {
-  const members = await teamMemberRepo.listAllTeamMembers();
+export async function listTeamMembersForAdmin(includeInactive = false) {
+  const members = await teamMemberRepo.listAllTeamMembers(includeInactive);
   return members.map((member) => ({
     ...member,
     pinVisible: false,

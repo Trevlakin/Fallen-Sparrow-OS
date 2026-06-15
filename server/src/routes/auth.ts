@@ -14,3 +14,9 @@ authRouter.post(
   enforceTenant,
   authController.changePassword,
 );
+authRouter.post(
+  "/change-email",
+  requireAuth,
+  enforceTenant,
+  authController.changeEmail,
+);
