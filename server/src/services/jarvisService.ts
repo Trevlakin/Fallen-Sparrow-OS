@@ -126,7 +126,18 @@ export type JarvisContext = {
   inventoryAlerts: string;
 };
 
-const JARVIS_RESPONSE_SYSTEM_PROMPT = `You are JARVIS — the operational intelligence for Fallen Sparrow Tattoo Studio
+const ORACLE_RESPONSE_FORMAT_RULES = `
+RESPONSE FORMAT RULES - FOLLOW EXACTLY:
+- Use bullet points (•) for every list item
+- ✅ for positive results or confirmations
+- ⚠️ for items to watch or low confidence actions
+- 🔴 for items needing immediate attention
+- Never use numbered lists
+- Never use markdown headers
+- Keep responses concise — one sentence per bullet
+- Always end expense/log confirmations with what was saved and where`;
+
+const JARVIS_RESPONSE_SYSTEM_PROMPT = `You are JARVIS, the operational intelligence for Fallen Sparrow Tattoo Studio
 in Kissimmee, Florida. You work directly for Legion, the owner. You are his
 right-hand man. You are sharp, direct, and always across what's happening at
 the shop.
@@ -137,14 +148,13 @@ Now respond to him in 2-4 sentences maximum. Rules:
 - Lead with what matters most right now
 - If something needs his attention, say it directly
 - If everything is fine, say so briefly and move on
-- Never use bullet points or lists
-- Never sound like a corporate assistant or a chatbot
 - Sound like someone who knows this shop cold and has his back
 - If a dollar amount was just logged, acknowledge it with context
   (e.g. "that puts you at $520 in maintenance this month")
 - If checklists are incomplete this morning, mention them directly
   (e.g. "Cleaner checklist not started yet" or "Opening checklist is half done")
-- End with one question only if genuinely important — otherwise don't ask`;
+- End with one question only if genuinely important. Otherwise don't ask
+${ORACLE_RESPONSE_FORMAT_RULES}`;
 
 function buildCategoryBlock(): string {
   return (
@@ -1145,6 +1155,28 @@ export interface ExpenseLogResult {
   message: string;
 }
 
+function formatExpenseLogMessage(
+  amount: number,
+  description: string,
+  categoryName: string,
+  vendor: string | null,
+  confidence: number,
+  expenseDate: string,
+): string {
+  const monthName = new Date(`${expenseDate}T12:00:00`).toLocaleString("en-US", {
+    month: "long",
+  });
+  const vendorSuffix = vendor ? ` (${vendor})` : "";
+  const lines = [
+    `✅ Logged: $${amount.toFixed(0)} - ${description} (${categoryName})${vendorSuffix}`,
+    `• Added to ${monthName} expenses automatically.`,
+  ];
+  if (confidence < CONFIDENCE_THRESHOLD) {
+    lines.push(`⚠️ Category auto-assigned as ${categoryName}. Tap to change if needed.`);
+  }
+  return lines.join("\n");
+}
+
 export async function logExpenseDirect(
   userId: string | undefined,
   rawText: string,
@@ -1170,8 +1202,15 @@ export async function logExpenseDirect(
       .returning({ id: expenses.id });
 
     const expenseId = row?.id ?? "";
-    const vendorStr = extracted.vendor ? ` — ${extracted.vendor}` : "";
-    const message = `Logged: $${extracted.amount.toFixed(0)}${vendorStr} — ${extracted.description || "Expense"} (${categoryMeta.name})`;
+    const description = extracted.description || extracted.vendor || "Expense";
+    const message = formatExpenseLogMessage(
+      extracted.amount,
+      description,
+      categoryMeta.name,
+      extracted.vendor,
+      extracted.confidence,
+      extracted.date,
+    );
 
     return {
       expenseId,
@@ -1201,7 +1240,15 @@ export async function logExpenseDirect(
     .returning({ id: expenses.id });
 
   const expenseId = suggRow?.id ?? "";
-  const message = `Logged $${extracted.amount.toFixed(0)} — ${extracted.description || "Expense"} — category unclear, filed as ${categoryMeta.name}. Tap to edit.`;
+  const description = extracted.description || extracted.vendor || "Expense";
+  const message = formatExpenseLogMessage(
+    extracted.amount,
+    description,
+    categoryMeta.name,
+    extracted.vendor,
+    extracted.confidence,
+    extracted.date,
+  );
 
   return {
     expenseId,
@@ -1215,11 +1262,174 @@ export async function logExpenseDirect(
   };
 }
 
+// ─── MAINTENANCE INCIDENT DIRECT LOG ─────────────────────────────────────────
+
+const ExtractedMaintenanceSchema = z.object({
+  description: z.string().min(1),
+  amount: z.number().positive().nullable().default(null),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  confidence: z.number().min(0).max(1),
+});
+
+export interface MaintenanceLogResult {
+  incidentId: string;
+  expenseId: string | null;
+  message: string;
+}
+
+export function looksLikeMaintenanceIncident(input: string): boolean {
+  const normalized = input.toLowerCase();
+  const hasCost =
+    /\$\s*\d+/.test(input) ||
+    /\d+\s*dollars?/.test(normalized) ||
+    /cost\s+\$?\d+/.test(normalized);
+  const maintenanceTerms = [
+    "repair",
+    "ac ",
+    "a/c",
+    "hvac",
+    "plumbing",
+    "electrical",
+    "maintenance",
+    "broken",
+    "leak",
+    "equipment",
+    "sterilizer",
+    "drain",
+  ];
+  return hasCost && maintenanceTerms.some((term) => normalized.includes(term));
+}
+
+async function extractMaintenanceFromText(
+  input: string,
+  todayISO: string,
+): Promise<z.infer<typeof ExtractedMaintenanceSchema>> {
+  const rawJson = await callClaude({
+    systemPrompt: `Extract maintenance incident details from this text. Return JSON only. No markdown.
+Fields: description (string), amount (number or null if no cost mentioned),
+date (YYYY-MM-DD, use ${todayISO} if not specified), confidence (0.0-1.0).
+Return ONLY valid JSON, no preamble.`,
+    userMessage: input,
+    maxTokens: 400,
+  });
+
+  try {
+    const clean = rawJson
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+    return ExtractedMaintenanceSchema.parse(JSON.parse(clean));
+  } catch {
+    throw new AppError("Could not parse maintenance incident. Please try again.", 422);
+  }
+}
+
+export async function logMaintenanceIncidentDirect(
+  userId: string | undefined,
+  rawText: string,
+  todayISO: string,
+): Promise<MaintenanceLogResult> {
+  const extracted = await extractMaintenanceFromText(rawText, todayISO);
+  let expenseId: string | null = null;
+  const amount = extracted.amount ?? 0;
+
+  if (amount > 0) {
+    const [expRow] = await db
+      .insert(expenses)
+      .values({
+        loggedByUserId: userId,
+        description: `Maintenance: ${extracted.description}`,
+        amount: amount.toFixed(2),
+        category: "MAINTENANCE",
+        qbGlAccount: EXPENSE_CATEGORIES.MAINTENANCE.qbAccount,
+        expenseDate: new Date(extracted.date),
+        aiConfidence: extracted.confidence.toFixed(2),
+        needsReview: false,
+        source: "jarvis",
+      })
+      .returning({ id: expenses.id });
+    expenseId = expRow?.id ?? null;
+  }
+
+  const [incRow] = await db
+    .insert(incidents)
+    .values({
+      loggedByUserId: userId,
+      incidentType: "operational",
+      description: extracted.description,
+      status: "open",
+      occurredDate: new Date(extracted.date),
+      ...(expenseId && amount > 0
+        ? { linkedExpenseId: expenseId, linkedExpenseAmount: Math.round(amount) }
+        : {}),
+    })
+    .returning({ id: incidents.id });
+
+  const incidentId = incRow?.id ?? "";
+  const monthName = new Date(`${extracted.date}T12:00:00`).toLocaleString("en-US", {
+    month: "long",
+  });
+  const lines = [
+    `🔧 Incident logged: ${extracted.description}`,
+  ];
+  if (amount > 0 && expenseId) {
+    lines.push(`✅ Logged: $${amount.toFixed(0)} - ${extracted.description} (Maintenance)`);
+    lines.push(`• Added to ${monthName} expenses automatically.`);
+  }
+  return { incidentId, expenseId, message: lines.join("\n") };
+}
+
+// ─── STRATEGIC NOTE DIRECT LOG ───────────────────────────────────────────────
+
+export interface StrategicNoteLogResult {
+  noteId: string;
+  message: string;
+}
+
+export function looksLikeStrategicNote(input: string): boolean {
+  const normalized = input.toLowerCase();
+  return (
+    normalized.includes("i have an idea") ||
+    normalized.includes("idea for") ||
+    normalized.includes("thinking about") ||
+    normalized.includes("what if we") ||
+    normalized.includes("strategic")
+  );
+}
+
+export async function logStrategicNoteDirect(
+  userId: string | undefined,
+  rawText: string,
+): Promise<StrategicNoteLogResult> {
+  const expansion = await generateNoteExpansion(rawText.trim());
+  const bullets = expansion
+    .split("\n")
+    .map((line) => line.replace(/^[-•]\s*/, "• "))
+    .filter((line) => line.trim().length > 0)
+    .slice(0, 3)
+    .join("\n");
+
+  const [noteRow] = await db
+    .insert(strategicNotes)
+    .values({
+      authorUserId: userId,
+      content: rawText.trim(),
+      aiExpansion: expansion,
+    })
+    .returning({ id: strategicNotes.id });
+
+  const noteId = noteRow?.id ?? "";
+  const message = `💡 Saved your idea.\n${bullets}`;
+  return { noteId, message };
+}
+
 // ─── STRATEGIC NOTE: AI expansion ────────────────────────────────────────────
 
 export async function generateNoteExpansion(noteText: string): Promise<string> {
   return callClaude({
-    systemPrompt: `You are a business advisor for a tattoo studio. Return ONLY 3 bullet points (one per line, starting with "- "), no intro text.`,
+    systemPrompt: `You are a business advisor for a tattoo studio.
+Return ONLY 3 bullet points (one per line, starting with "• "), no intro text.
+${ORACLE_RESPONSE_FORMAT_RULES}`,
     userMessage: `The owner shared this idea: "${noteText}"\n\nGive exactly 3 concise bullet points on what would make this successful quickly. Be specific to a tattoo studio.`,
     maxTokens: 300,
   });

@@ -43,7 +43,7 @@ Respond ONLY with valid JSON (no markdown fences):
 
 subType examples:
 - QUERY: financial_recap, artist_performance, expense_query, sop_status, appointment_query, comparison, health_check, extra_task_query
-- LOG: expense_log, artist_payout_log, incident_log, sale_log, staff_note
+- LOG: expense_log, artist_payout_log, incident_log, sale_log, staff_note, strategic_note
 - COMMAND: pin_change, add_employee, deactivate_employee, quickbooks_sync
 
 extractedParams for QUERY may include: month, year, period (today, yesterday, current_week, last_week, current_month, last_month, ytd, all_time), artist, metric, category.
@@ -62,6 +62,9 @@ Examples:
 "what extra tasks are open right now" -> QUERY, extra_task_query, period today
 "how long did the AC thing take to resolve" -> QUERY, extra_task_query
 "bought ink from eternal ink $180" -> LOG, expense_log
+"spent $140 on sterilization pouches" -> LOG, expense_log
+"AC repair cost $450 today" -> LOG, incident_log
+"I have an idea for a Sunday night event" -> LOG, strategic_note
 "paid Carlos $5376 via Zelle" -> LOG, artist_payout_log
 "sent Riley 4836 on cash app" -> LOG, artist_payout_log
 "gave Taylor $1740 cash for their sessions" -> LOG, artist_payout_log`;

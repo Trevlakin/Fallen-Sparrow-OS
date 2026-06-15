@@ -8,6 +8,10 @@ import * as jarvisTeamCommandService from "./jarvisTeamCommandService.js";
 import * as quickbooksService from "./quickbooksService.js";
 import {
   logExpenseDirect,
+  logMaintenanceIncidentDirect,
+  logStrategicNoteDirect,
+  looksLikeMaintenanceIncident,
+  looksLikeStrategicNote,
   queryFollowUps,
 } from "./jarvisService.js";
 import {
@@ -216,9 +220,51 @@ export async function routeClassifiedJarvisInput(
   if (classified.intent === "LOG" && classified.subType === "expense_log") {
     const tz = timezone ?? "America/New_York";
     const todayISO = todayISOInTimezone(tz);
+    if (looksLikeMaintenanceIncident(classified.originalInput)) {
+      try {
+        const result = await logMaintenanceIncidentDirect(
+          userId,
+          classified.originalInput,
+          todayISO,
+        );
+        return buildQueryResponse(result.message, classified.confidence, "incident_log");
+      } catch {
+        return null;
+      }
+    }
     try {
       const result = await logExpenseDirect(userId, classified.originalInput, todayISO);
       return buildExpenseLogResponse(result.message, classified.confidence, result.expenseId, result.committed);
+    } catch {
+      return null;
+    }
+  }
+
+  if (
+    classified.intent === "LOG" &&
+    (classified.subType === "incident_log" || looksLikeMaintenanceIncident(classified.originalInput))
+  ) {
+    const tz = timezone ?? "America/New_York";
+    const todayISO = todayISOInTimezone(tz);
+    try {
+      const result = await logMaintenanceIncidentDirect(
+        userId,
+        classified.originalInput,
+        todayISO,
+      );
+      return buildQueryResponse(result.message, classified.confidence, "incident_log");
+    } catch {
+      return null;
+    }
+  }
+
+  if (
+    classified.intent === "LOG" &&
+    (classified.subType === "strategic_note" || looksLikeStrategicNote(classified.originalInput))
+  ) {
+    try {
+      const result = await logStrategicNoteDirect(userId, classified.originalInput);
+      return buildQueryResponse(result.message, classified.confidence, "strategic_note");
     } catch {
       return null;
     }
