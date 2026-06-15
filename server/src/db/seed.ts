@@ -9,10 +9,11 @@ import {
   settings,
   sopChecklistItems,
   sops,
+  sopRoleAssignments,
   teamMembers,
   users,
 } from "@fallen-sparrow/shared/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { env } from "../config/env.js";
 import { db, pool } from "../config/database.js";
 import { hashPassword } from "../services/authService.js";
@@ -206,7 +207,221 @@ async function seedMeta(): Promise<void> {
 
 const CLEANER_ACCESS_TOKEN = "11111111-1111-4111-8111-111111111111";
 
+type SeedSopDef = {
+  title: string;
+  role: string;
+  frequency: string;
+  sortOrder: number;
+  checklistItems: string[];
+};
+
+const SPRINT_SOP_TEMPLATES: SeedSopDef[] = [
+  {
+    title: "Front Desk: Opening",
+    role: "FRONT_DESK",
+    frequency: "opening",
+    sortOrder: 1,
+    checklistItems: [
+      "Check appointment schedule for today",
+      "Confirm deposits on file for today's bookings",
+      "Turn on all equipment and station lighting",
+      "Restock front desk supplies",
+      "Check and respond to overnight messages",
+    ],
+  },
+  {
+    title: "Front Desk: Closing",
+    role: "FRONT_DESK",
+    frequency: "closing",
+    sortOrder: 2,
+    checklistItems: [
+      "Reconcile cash payments from today",
+      "Confirm tomorrow's appointments",
+      "Wipe down front desk and waiting area",
+      "Lock display cases",
+      "Set alarm and lock up",
+    ],
+  },
+  {
+    title: "Artist: Opening",
+    role: "ARTIST",
+    frequency: "opening",
+    sortOrder: 1,
+    checklistItems: [
+      "Sterilize workstation",
+      "Stock needles and ink for today's bookings",
+      "Review client notes for today",
+    ],
+  },
+  {
+    title: "Artist: Closing",
+    role: "ARTIST",
+    frequency: "closing",
+    sortOrder: 2,
+    checklistItems: [
+      "Sterilize all equipment and surfaces",
+      "Dispose of sharps and biohazard waste properly",
+      "Restock station for tomorrow",
+      "Log any supply shortages in Oracle",
+    ],
+  },
+  {
+    title: "Maintenance: Daily",
+    role: "MAINTENANCE",
+    frequency: "daily",
+    sortOrder: 1,
+    checklistItems: [
+      "Check common areas for cleanliness",
+      "Inspect and restock cleaning supplies",
+      "Check for open maintenance incidents",
+      "Confirm AC and equipment are operational",
+    ],
+  },
+  {
+    title: "Owner: Opening",
+    role: "OWNER",
+    frequency: "opening",
+    sortOrder: 1,
+    checklistItems: [
+      "Review yesterday's revenue and expenses",
+      "Check team schedule and coverage",
+      "Review open incidents and maintenance items",
+    ],
+  },
+  {
+    title: "Owner: Closing",
+    role: "OWNER",
+    frequency: "closing",
+    sortOrder: 2,
+    checklistItems: [
+      "Review today's revenue and cash reconciliation",
+      "Confirm all checklists completed",
+      "Set alarm and secure premises",
+    ],
+  },
+  {
+    title: "Manager: Daily",
+    role: "MANAGER",
+    frequency: "daily",
+    sortOrder: 1,
+    checklistItems: [
+      "Walk the floor and check station readiness",
+      "Review inventory low-stock alerts",
+      "Check in with front desk on appointments",
+      "Address any open maintenance incidents",
+    ],
+  },
+  {
+    title: "Cleaner: Daily",
+    role: "CLEANER",
+    frequency: "daily",
+    sortOrder: 1,
+    checklistItems: [
+      "Mop all floors",
+      "Wipe down all stations",
+      "Clean and sanitize sinks",
+      "Empty all trash",
+      "Restock paper towels and soap",
+      "Wipe mirrors",
+      "Sweep entrance",
+    ],
+  },
+];
+
+async function ensureSopTemplate(def: SeedSopDef): Promise<string | null> {
+  const existing = await db
+    .select({ id: sops.id })
+    .from(sops)
+    .where(eq(sops.title, def.title))
+    .limit(1);
+
+  let sopId = existing[0]?.id;
+  if (!sopId) {
+    const [created] = await db
+      .insert(sops)
+      .values({
+        title: def.title,
+        role: def.role === "CLEANER" || def.role === "MAINTENANCE"
+          ? null
+          : (def.role as (typeof sops.$inferInsert)["role"]),
+        frequency: def.frequency,
+        sortOrder: def.sortOrder,
+        isActive: true,
+      })
+      .returning({ id: sops.id });
+    if (!created?.id) return null;
+    const newSopId = created.id;
+
+    await db.insert(sopRoleAssignments).values({
+      sopId: newSopId,
+      role: def.role,
+    });
+    await db.insert(sopChecklistItems).values(
+      def.checklistItems.map((label, index) => ({
+        sopId: newSopId,
+        label,
+        sortOrder: index + 1,
+        isActive: true,
+      })),
+    );
+    return newSopId;
+  }
+
+  const resolvedSopId = sopId;
+
+  const roleAssignment = await db
+    .select({ id: sopRoleAssignments.id })
+    .from(sopRoleAssignments)
+    .where(
+      and(eq(sopRoleAssignments.sopId, resolvedSopId), eq(sopRoleAssignments.role, def.role)),
+    )
+    .limit(1);
+  if (!roleAssignment[0]) {
+    await db.insert(sopRoleAssignments).values({ sopId: resolvedSopId, role: def.role });
+  }
+
+  const existingItems = await db
+    .select({ label: sopChecklistItems.label })
+    .from(sopChecklistItems)
+    .where(eq(sopChecklistItems.sopId, resolvedSopId));
+  const existingLabels = new Set(existingItems.map((item) => item.label));
+  const missingItems = def.checklistItems.filter((label) => !existingLabels.has(label));
+  if (missingItems.length > 0) {
+    const maxSort = existingItems.length;
+    await db.insert(sopChecklistItems).values(
+      missingItems.map((label, index) => ({
+        sopId: resolvedSopId,
+        label,
+        sortOrder: maxSort + index + 1,
+        isActive: true,
+      })),
+    );
+  }
+
+  return resolvedSopId;
+}
+
+async function seedSprintSopTemplates(): Promise<void> {
+  let created = 0;
+  for (const template of SPRINT_SOP_TEMPLATES) {
+    const existing = await db
+      .select({ id: sops.id })
+      .from(sops)
+      .where(eq(sops.title, template.title))
+      .limit(1);
+    const sopId = await ensureSopTemplate(template);
+    if (sopId && !existing[0]) {
+      created += 1;
+    }
+  }
+  if (created > 0) {
+    console.log(`Seeded ${created} Sprint SOP templates`);
+  }
+}
+
 async function seedSops(): Promise<void> {
+  await seedSprintSopTemplates();
+
   const existing = await db.select({ id: sops.id }).from(sops).limit(1);
   if (existing[0]) {
     return;
