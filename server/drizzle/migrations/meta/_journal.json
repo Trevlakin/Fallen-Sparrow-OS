@@ -127,6 +127,20 @@
       "when": 1780002300000,
       "tag": "0017_studio_day_session_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780002400000,
+      "tag": "0018_remove_test_team_members",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780002500000,
+      "tag": "0019_seed_missing_sops",
+      "breakpoints": true
     }
   ]
 }
