@@ -6,7 +6,9 @@ import {
   useIsFrontDesk,
   useIsManager,
   useIsOwner,
+  isPinSessionUser,
 } from "@/context/AuthContext";
+import { TEAM_MEMBER_ROLE_LABELS, type TeamMemberRole } from "@fallen-sparrow/shared/constants";
 import { BottomNav } from "@/components/BottomNav";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -134,6 +136,16 @@ export function AppLayout() {
     ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
     : "?";
 
+  const userDisplayName = user
+    ? user.displayName ?? `${user.firstName} ${user.lastName}`
+    : "";
+
+  const roleLabel =
+    user && isPinSessionUser(user)
+      ? TEAM_MEMBER_ROLE_LABELS[user.role as TeamMemberRole] ??
+        user.role.replace(/_/g, " ")
+      : null;
+
   const visibleNav = navItems.filter((item) => {
     if (isFrontDesk) {
       return item.frontDesk === true;
@@ -205,10 +217,12 @@ export function AppLayout() {
         <div className="sidebar-user">
           <div className="avatar-circle">{initials}</div>
           <div>
-            <div className="user-name">
-              {user ? `${user.firstName} ${user.lastName}` : ""}
-            </div>
-            <div className="user-email">{user?.email}</div>
+            <div className="user-name">{userDisplayName}</div>
+            {user && isPinSessionUser(user) ? (
+              <span className="role-badge sidebar-user-role">{roleLabel}</span>
+            ) : (
+              <div className="user-email">{user?.email}</div>
+            )}
             <button type="button" className="sign-out-link" onClick={handleSignOut}>
               Sign Out
             </button>
@@ -219,7 +233,10 @@ export function AppLayout() {
         {isMobile && user && (
           <div className="mobile-sign-out-bar">
             <span className="mobile-sign-out-name">
-              {user.displayName ?? `${user.firstName} ${user.lastName}`}
+              {userDisplayName}
+              {roleLabel ? (
+                <span className="role-badge mobile-user-role">{roleLabel}</span>
+              ) : null}
             </span>
             <button
               type="button"

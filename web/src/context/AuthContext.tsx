@@ -33,6 +33,13 @@ export interface AuthUser {
   displayName?: string;
 }
 
+/** True for PIN-based staff sessions (synthetic @staff.internal email). */
+export function isPinSessionUser(user: AuthUser): boolean {
+  if (user.authType === "pin") return true;
+  const email = user.email.toLowerCase();
+  return email.includes("@staff.internal") || email.startsWith("pin-");
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;

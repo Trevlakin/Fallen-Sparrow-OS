@@ -133,6 +133,15 @@ textarea {
   color: var(--muted);
 }
 
+.sidebar-user-role {
+  margin-top: 0.2rem;
+}
+
+.mobile-user-role {
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
 .sign-out-link {
   background: none;
   border: none;
