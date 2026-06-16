@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, lt, lte, or, sql } from "drizzle-orm";
 import {
   appointmentPayments,
   appointments,
@@ -232,6 +232,34 @@ export async function findHistoricalImportMatch(params: {
         lte(appointments.appointmentDate, dayEnd),
         eq(appointmentPayments.totalRevenue, revenueStr),
         sql`${appointments.porterAppointmentId} LIKE 'historical-%'`,
+      ),
+    )
+    .limit(1);
+
+  return rows[0];
+}
+
+export async function findAppointmentByArtistClientDate(params: {
+  artistName: string;
+  clientName: string;
+  appointmentDate: Date;
+}): Promise<{ id: string } | undefined> {
+  const windowStart = new Date(params.appointmentDate);
+  windowStart.setSeconds(0, 0);
+  const windowEnd = new Date(windowStart);
+  windowEnd.setMinutes(windowEnd.getMinutes() + 1);
+
+  const rows = await db
+    .select({ id: appointments.id })
+    .from(appointments)
+    .innerJoin(artists, eq(appointments.artistId, artists.id))
+    .innerJoin(customers, eq(appointments.customerId, customers.id))
+    .where(
+      and(
+        ilike(artists.name, params.artistName.trim()),
+        ilike(customers.name, params.clientName.trim()),
+        gte(appointments.appointmentDate, windowStart),
+        lt(appointments.appointmentDate, windowEnd),
       ),
     )
     .limit(1);

@@ -29,6 +29,10 @@ export interface ImportResult {
   imported: number;
   skipped: number;
   errors: { row: number; reason: string }[];
+  duplicates?: number;
+  pending?: number;
+  dateRange?: { from: string; to: string } | null;
+  artists?: string[];
 }
 
 export interface ParsedAppointment {

@@ -21,6 +21,14 @@
     "./serviceTypes": {
       "types": "./dist/serviceTypes.d.ts",
       "import": "./dist/serviceTypes.js"
+    },
+    "./dates": {
+      "types": "./dist/dates.d.ts",
+      "import": "./dist/dates.js"
+    },
+    "./porterCsv": {
+      "types": "./dist/porterCsv.d.ts",
+      "import": "./dist/porterCsv.js"
     }
   },
   "scripts": {

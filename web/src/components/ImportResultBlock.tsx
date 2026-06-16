@@ -17,13 +17,33 @@ export function ImportResultBlock({
   if (!result) return null;
 
   const success = result.imported > 0;
+  const hasPorterSummary =
+    result.duplicates !== undefined ||
+    result.pending !== undefined ||
+    result.dateRange !== undefined ||
+    (result.artists && result.artists.length > 0);
+
   return (
     <div className={`import-result ${success ? "import-result-success" : ""}`}>
       <p>
         {success ? "✓ " : ""}
-        {result.imported} records imported · {result.skipped} skipped · {result.errors.length}{" "}
-        errors
+        {result.imported} imported · {result.skipped} skipped
+        {result.duplicates !== undefined ? ` · ${result.duplicates} duplicates` : ""}
+        {result.pending !== undefined ? ` · ${result.pending} pending` : ""}
+        {result.errors.length > 0 ? ` · ${result.errors.length} errors` : ""}
       </p>
+      {hasPorterSummary && (
+        <div className="import-result-meta text-muted">
+          {result.dateRange && (
+            <p>
+              Date range: {result.dateRange.from} to {result.dateRange.to}
+            </p>
+          )}
+          {result.artists && result.artists.length > 0 && (
+            <p>Artists: {result.artists.join(", ")}</p>
+          )}
+        </div>
+      )}
       {result.errors.length > 0 && (
         <div className="import-errors">
           <button

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as csvImportService from "../services/csvImportService.js";
+import * as porterTransactionsImportService from "../services/porterTransactionsImportService.js";
 import * as pnlImportHistoryService from "../services/pnlImportHistoryService.js";
 import * as porterIngestionService from "../services/porterIngestionService.js";
 import * as authService from "../services/authService.js";
@@ -29,7 +30,9 @@ const appointmentMappingSchema = z.object({
 
 const importBodySchema = z.object({
   csv: z.string().min(1),
-  format: z.enum(["expenses", "appointments", "porter"]).optional(),
+  format: z
+    .enum(["expenses", "appointments", "porter", "porter-transactions"])
+    .optional(),
   mapping: z.record(z.string()).optional(),
   fileName: z.string().max(255).optional(),
 });
@@ -103,6 +106,19 @@ export async function importCsv(
 
     const { csv, format, mapping, fileName } = parsed.data;
     const auditUserId = authService.resolveAuditUserId(req.authPayload);
+    const preparedCsv = porterTransactionsImportService.isPorterAppointmentTransactionsExport(
+      csv,
+    )
+      ? porterTransactionsImportService.preparePorterTransactionsCsv(csv)
+      : csv;
+
+    if (format === "porter-transactions") {
+      const result =
+        await porterTransactionsImportService.importPorterTransactionsCsv(csv);
+      await recordPnlImportIfNeeded("appointments", fileName, auditUserId, result);
+      res.json(result);
+      return;
+    }
 
     if (format === "expenses" && mapping) {
       const expenseMapping = expenseMappingSchema.parse(mapping);
@@ -124,7 +140,7 @@ export async function importCsv(
 
     if (format === "appointments" && mapping) {
       const appointmentMapping = appointmentMappingSchema.parse(mapping);
-      validateMappingColumns(csv, appointmentMapping, [
+      validateMappingColumns(preparedCsv, appointmentMapping, [
         "date",
         "artistName",
         "clientName",
@@ -132,7 +148,7 @@ export async function importCsv(
         "totalRevenue",
       ]);
       const result = await csvImportService.importAppointmentsCsvWithMapping(
-        csv,
+        preparedCsv,
         appointmentMapping,
       );
       await recordPnlImportIfNeeded(format, fileName, auditUserId, result);
@@ -146,12 +162,20 @@ export async function importCsv(
       return;
     }
 
-    const headers = csvImportService.listCsvHeaders(csv);
+    const headers = csvImportService.listCsvHeaders(preparedCsv);
     const detected = csvImportService.detectCsvFormat(headers);
+
+    if (porterTransactionsImportService.isPorterAppointmentTransactionsExport(csv)) {
+      const result =
+        await porterTransactionsImportService.importPorterTransactionsCsv(csv);
+      await recordPnlImportIfNeeded("appointments", fileName, auditUserId, result);
+      res.json(result);
+      return;
+    }
 
     switch (detected) {
       case "appointments": {
-        const result = await csvImportService.importAppointmentsCsv(csv);
+        const result = await csvImportService.importAppointmentsCsv(preparedCsv);
         await recordPnlImportIfNeeded("appointments", fileName, auditUserId, result);
         res.json(result);
         return;
@@ -187,8 +211,13 @@ export async function previewCsvHeaders(
 ): Promise<void> {
   try {
     const { csv } = await getCsvImportPayload(req);
-    const { headers, rows } = csvImportService.parseCsvPreview(csv, 5);
-    res.json({ headers, previewRows: rows });
+    const prepared = porterTransactionsImportService.isPorterAppointmentTransactionsExport(
+      csv,
+    )
+      ? porterTransactionsImportService.preparePorterTransactionsCsv(csv)
+      : csv;
+    const { headers, rows } = csvImportService.parseCsvPreview(prepared, 5);
+    res.json({ headers, previewRows: rows, porterTransactions: porterTransactionsImportService.isPorterAppointmentTransactionsExport(csv) });
   } catch (err) {
     next(err);
   }

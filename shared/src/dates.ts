@@ -41,3 +41,103 @@ export function getStudioDateFromTimestamp(
 ): string {
   return getStudioDay(date, timezone);
 }
+
+/** Convert wall-clock date/time in a timezone to a UTC Date. */
+export function wallTimeInTimeZoneToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string = STUDIO_TIMEZONE,
+): Date {
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, 0);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = formatter.formatToParts(new Date(utcMs));
+    const read = (type: Intl.DateTimeFormatPartTypes): number =>
+      Number(parts.find((p) => p.type === type)?.value ?? "0");
+    let y = read("year");
+    let mo = read("month");
+    let d = read("day");
+    let h = read("hour");
+    const min = read("minute");
+    if (h === 24) {
+      h = 0;
+    }
+
+    const diffMinutes =
+      (year - y) * 525_600 +
+      (month - mo) * 43_200 +
+      (day - d) * 1_440 +
+      (hour - h) * 60 +
+      (minute - min);
+
+    if (diffMinutes === 0) {
+      break;
+    }
+    utcMs += diffMinutes * 60 * 1000;
+  }
+
+  return new Date(utcMs);
+}
+
+/**
+ * Porter Appointment Transactions date: MM/DD/YY HH:MM AM/PM in Eastern time.
+ * Example: 06/09/26 12:00 PM
+ */
+export function parsePorterAppointmentDateTime(
+  raw: string,
+  timeZone: string = STUDIO_TIMEZONE,
+): Date | null {
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+
+  const porterMatch = value.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i,
+  );
+  if (porterMatch) {
+    const month = Number(porterMatch[1]);
+    const day = Number(porterMatch[2]);
+    let year = Number(porterMatch[3]);
+    if (year < 100) {
+      year += 2000;
+    }
+    let hour = Number(porterMatch[4]);
+    const minute = Number(porterMatch[5]);
+    const ampm = porterMatch[6]?.toUpperCase();
+    if (ampm === "PM" && hour !== 12) {
+      hour += 12;
+    }
+    if (ampm === "AM" && hour === 12) {
+      hour = 0;
+    }
+    return wallTimeInTimeZoneToUtc(year, month, day, hour, minute, timeZone);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(`${value}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const mdy = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (mdy) {
+    const month = Number(mdy[1]);
+    const day = Number(mdy[2]);
+    const year = Number(mdy[3]);
+    return wallTimeInTimeZoneToUtc(year, month, day, 12, 0, timeZone);
+  }
+
+  return null;
+}

@@ -1,14 +1,22 @@
 /**
  * Lightweight CSV parse for column mapping UI (header row + data rows).
  */
+import {
+  findPorterDataStart,
+  isPorterAppointmentTransactionsExport,
+} from "@fallen-sparrow/shared/porterCsv";
+
 export function parseCsvText(csv: string): { headers: string[]; rows: string[][] } {
+  const source = isPorterAppointmentTransactionsExport(csv)
+    ? findPorterDataStart(csv)
+    : csv;
   const lines: string[] = [];
   let current = "";
   let inQuotes = false;
 
-  for (let i = 0; i < csv.length; i++) {
-    const c = csv[i];
-    const next = csv[i + 1];
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    const next = source[i + 1];
     if (c === '"') {
       if (inQuotes && next === '"') {
         current += '"';

@@ -7,6 +7,8 @@ import { ImportResultBlock } from "@/components/ImportResultBlock";
 import { ShareDemoLink } from "@/components/ShareDemoLink";
 import { APPOINTMENT_CSV_FIELDS } from "@/lib/csvMappingFields";
 import type { ImportResult } from "@/lib/csvImport";
+import { postPorterTransactionsCsv } from "@/lib/csvImport";
+import { isPorterAppointmentTransactionsExport } from "@fallen-sparrow/shared/porterCsv";
 import { emitCsvImport } from "@/lib/eventBus";
 import { useToast } from "@/context/ToastContext";
 import { useTour } from "@/hooks/useTour";
@@ -62,6 +64,7 @@ export function SettingsPage() {
   const [pendingCsv, setPendingCsv] = useState<string | null>(null);
   const [appointmentsResult, setAppointmentsResult] = useState<ImportResult | null>(null);
   const [appointmentsImportError, setAppointmentsImportError] = useState<string | null>(null);
+  const [appointmentsImporting, setAppointmentsImporting] = useState(false);
   const appointmentsFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -200,6 +203,22 @@ export function SettingsPage() {
     setAppointmentsResult(null);
     setAppointmentsImportError(null);
     const csv = await file.text();
+
+    if (isPorterAppointmentTransactionsExport(csv)) {
+      setAppointmentsImporting(true);
+      try {
+        const result = await postPorterTransactionsCsv(csv, file.name);
+        handleAppointmentsImportComplete(result);
+      } catch (err) {
+        setAppointmentsImportError(
+          err instanceof Error ? err.message : "Porter import failed",
+        );
+      } finally {
+        setAppointmentsImporting(false);
+      }
+      return;
+    }
+
     setPendingCsv(csv);
     setCsvMapperOpen(true);
   };
@@ -369,18 +388,19 @@ export function SettingsPage() {
         </p>
 
         <div className="import-card">
-          <h3>Appointment Records</h3>
+          <h3>Upload Porter CSV</h3>
           <p className="text-muted">
-            Import from Porter or any spreadsheet — you choose which column maps to each
-            field.
+            Download from Porter → Reports → Appointment Transactions. Upload the file
+            directly. No reformatting needed.
           </p>
           <div className="import-card-actions">
             <button
               type="button"
               className="btn-amber"
               onClick={() => appointmentsFileRef.current?.click()}
+              disabled={appointmentsImporting}
             >
-              Upload CSV
+              {appointmentsImporting ? "Importing..." : "Upload Porter CSV"}
             </button>
             <input
               ref={appointmentsFileRef}

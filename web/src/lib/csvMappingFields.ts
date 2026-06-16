@@ -19,21 +19,41 @@ export const EXPENSE_CSV_FIELDS: CsvFieldDef[] = [
 ];
 
 export const APPOINTMENT_CSV_FIELDS: CsvFieldDef[] = [
-  { key: "date", label: "Date", required: true, hints: ["date", "appointment", "scheduled"] },
-  { key: "artistName", label: "Artist Name", required: true, hints: ["artist", "provider", "staff"] },
-  { key: "clientName", label: "Client Name", required: true, hints: ["client", "customer", "name"] },
-  { key: "serviceType", label: "Service Type", required: true, hints: ["service", "type", "procedure"] },
+  {
+    key: "date",
+    label: "Date",
+    required: true,
+    hints: ["date", "appointment", "scheduled", "apt. date"],
+  },
+  {
+    key: "artistName",
+    label: "Artist Name",
+    required: true,
+    hints: ["artist", "provider", "staff"],
+  },
+  {
+    key: "clientName",
+    label: "Client Name",
+    required: true,
+    hints: ["client", "customer", "name"],
+  },
+  {
+    key: "serviceType",
+    label: "Service Type",
+    required: true,
+    hints: ["service", "type", "procedure"],
+  },
   {
     key: "totalRevenue",
     label: "Total Revenue",
     required: true,
-    hints: ["revenue", "total", "amount", "price", "charged"],
+    hints: ["revenue", "total", "amount", "price", "charged", "total cash"],
   },
   {
     key: "artistPayout",
     label: "Artist Payout",
     required: false,
-    hints: ["payout", "commission", "artist pay", "split"],
+    hints: ["payout", "commission", "artist pay", "split", "amount sent to artist"],
   },
   { key: "status", label: "Status", required: false, hints: ["status", "state"] },
   { key: "notes", label: "Notes", required: false, hints: ["notes", "comment", "memo"] },
