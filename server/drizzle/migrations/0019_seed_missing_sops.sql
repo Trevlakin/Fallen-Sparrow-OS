@@ -17,6 +17,7 @@ BEGIN
     END IF;
   END IF;
 END $$;
+--> statement-breakpoint
 
 -- Artist: Closing SOP
 DO $$
@@ -38,6 +39,7 @@ BEGIN
       (gen_random_uuid(), sop_id, 'Log any supply shortages in Oracle', 4, true, now());
   END IF;
 END $$;
+--> statement-breakpoint
 
 -- Owner: Opening SOP
 DO $$
@@ -58,6 +60,7 @@ BEGIN
       (gen_random_uuid(), sop_id, 'Review open incidents and maintenance items', 3, true, now());
   END IF;
 END $$;
+--> statement-breakpoint
 
 -- Owner: Closing SOP
 DO $$
@@ -78,6 +81,7 @@ BEGIN
       (gen_random_uuid(), sop_id, 'Set alarm and secure premises', 3, true, now());
   END IF;
 END $$;
+--> statement-breakpoint
 
 -- Manager: Daily SOP
 DO $$
@@ -99,6 +103,7 @@ BEGIN
       (gen_random_uuid(), sop_id, 'Address any open maintenance incidents', 4, true, now());
   END IF;
 END $$;
+--> statement-breakpoint
 
 -- Cleaner: Daily SOP (role via sop_role_assignments)
 DO $$
