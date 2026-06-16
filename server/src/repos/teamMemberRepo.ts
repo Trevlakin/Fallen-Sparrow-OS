@@ -86,6 +86,7 @@ const teamMemberAuthColumns = {
   displayName: teamMembers.displayName,
   role: teamMembers.role,
   pin: teamMembers.pin,
+  pinPlaintext: teamMembers.pinPlaintext,
   isActive: teamMembers.isActive,
   createdAt: teamMembers.createdAt,
   updatedAt: teamMembers.updatedAt,
