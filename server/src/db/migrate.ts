@@ -10,15 +10,14 @@ import pg from "pg";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-async function main(): Promise<void> {
-  const databaseUrl = process.env["DATABASE_URL"];
-  if (!databaseUrl) {
-    console.error("db:migrate: DATABASE_URL is required");
-    process.exit(1);
+export async function runMigrations(databaseUrl?: string): Promise<void> {
+  const url = databaseUrl ?? process.env["DATABASE_URL"];
+  if (!url) {
+    throw new Error("DATABASE_URL is required");
   }
 
   const migrationsFolder = resolve(__dirname, "../../drizzle/migrations");
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = new pg.Pool({ connectionString: url });
   const db = drizzle(pool);
 
   console.log(`db:migrate: applying migrations from ${migrationsFolder}`);
@@ -27,10 +26,20 @@ async function main(): Promise<void> {
   console.log("db:migrate: complete");
 }
 
-main().catch((err: unknown) => {
-  console.error(
-    "db:migrate: failed",
-    err instanceof Error ? err.message : String(err),
-  );
-  process.exit(1);
-});
+async function main(): Promise<void> {
+  await runMigrations();
+}
+
+const isMain =
+  process.argv[1] != null &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMain) {
+  main().catch((err: unknown) => {
+    console.error(
+      "db:migrate: failed",
+      err instanceof Error ? err.message : String(err),
+    );
+    process.exit(1);
+  });
+}
