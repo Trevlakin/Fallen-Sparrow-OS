@@ -11,6 +11,7 @@ export interface TeamMemberRow {
   displayName: string;
   role: TeamMemberRole;
   isActive?: boolean;
+  pin?: string | null;
   pinVisible: boolean;
 }
 

@@ -148,6 +148,13 @@
       "when": 1780002600000,
       "tag": "0020_seed_commission_tiers",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780002700000,
+      "tag": "0021_team_member_pin_plaintext",
+      "breakpoints": true
     }
   ]
 }

@@ -712,6 +712,7 @@ async function seedTeamMembers(): Promise<void> {
         displayName: "JP",
         role: "MAINTENANCE",
         pin: pinHash,
+        pinPlaintext: "7777",
         isActive: true,
       });
       console.log("Seeded JP (MAINTENANCE) test user with PIN 7777");
@@ -727,6 +728,7 @@ async function seedTeamMembers(): Promise<void> {
       displayName: member.displayName,
       role: member.role,
       pin: pinHash,
+      pinPlaintext: member.pin,
       isActive: true,
     });
     createdPins.push(`${member.displayName} (${member.role}): ${member.pin}`);

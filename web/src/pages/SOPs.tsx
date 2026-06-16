@@ -11,6 +11,7 @@ import { emitData, DATA_EVENTS } from "@/lib/eventBus";
 import { useEventBusRefresh } from "@/hooks/useEventBusRefresh";
 import { AddEmployeeModal } from "@/components/sops/AddEmployeeModal";
 import { EmployeePinTable, type TeamMemberRow } from "@/components/sops/EmployeePinTable";
+import { PinReferenceNote } from "@/components/sops/PinReferenceNote";
 import { SopCard, type SopCardData } from "@/components/sops/SopCard";
 import { SopEditPanel } from "@/components/sops/SopEditPanel";
 import { SOPHistory } from "@/components/sops/SOPHistory";
@@ -155,6 +156,7 @@ export function SOPsPage() {
   const changePin = async (id: string, pin: string) => {
     await api.patch(`/api/team-members/${id}/pin`, { pin });
     showToast("PIN updated", "success");
+    await loadAll();
   };
 
   const updateEmployee = async (
@@ -207,14 +209,17 @@ export function SOPsPage() {
       {loading && <p className="text-muted">Loading SOPs...</p>}
 
       {!loading && isManager && (
-        <EmployeePinTable
-          members={teamMembers}
-          showInactive={showInactive}
-          onToggleInactive={setShowInactive}
-          onChangePin={changePin}
-          onUpdateMember={updateEmployee}
-          onDeactivate={deactivateEmployee}
-        />
+        <>
+          <PinReferenceNote members={teamMembers} />
+          <EmployeePinTable
+            members={teamMembers}
+            showInactive={showInactive}
+            onToggleInactive={setShowInactive}
+            onChangePin={changePin}
+            onUpdateMember={updateEmployee}
+            onDeactivate={deactivateEmployee}
+          />
+        </>
       )}
 
       {!loading &&

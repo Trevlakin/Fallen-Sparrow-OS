@@ -438,6 +438,8 @@ export const teamMembers = pgTable("team_members", {
   displayName: varchar("display_name", { length: 255 }).notNull(),
   role: varchar("role", { length: 50 }).notNull(),
   pin: varchar("pin", { length: 255 }).notNull(),
+  /** Manager-only display copy; updated whenever a PIN is set or changed. */
+  pinPlaintext: varchar("pin_plaintext", { length: 4 }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

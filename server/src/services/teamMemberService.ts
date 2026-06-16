@@ -103,10 +103,15 @@ export async function generateDisplayName(fullName: string): Promise<string> {
 }
 
 export async function listTeamMembersForAdmin(includeInactive = false) {
-  const members = await teamMemberRepo.listAllTeamMembers(includeInactive);
+  const members = await teamMemberRepo.listAllTeamMembersForAdmin(includeInactive);
   return members.map((member) => ({
-    ...member,
-    pinVisible: false,
+    id: member.id,
+    name: member.name,
+    displayName: member.displayName,
+    role: member.role,
+    isActive: member.isActive,
+    pin: member.pinPlaintext,
+    pinVisible: member.pinPlaintext !== null,
   }));
 }
 
@@ -130,6 +135,7 @@ export async function createTeamMember(input: {
     displayName,
     role: input.role,
     pinHash,
+    pinPlaintext: pin,
   });
   return { member, pin };
 }
@@ -163,7 +169,7 @@ export async function changeTeamMemberPin(
   }
   await assertPinUniqueAmongActiveMembers(pin, id);
   const pinHash = await hashPin(pin);
-  const ok = await teamMemberRepo.updateTeamMemberPin(id, pinHash);
+  const ok = await teamMemberRepo.updateTeamMemberPin(id, pinHash, pin);
   if (!ok) {
     throw new AppError("Team member not found", 404);
   }
@@ -223,4 +229,26 @@ export async function findTeamMemberByPin(pin: string): Promise<{
     throw new AppError(AMBIGUOUS_PIN_MESSAGE, 409);
   }
   return matches[0]!;
+}
+
+/** Resolve a bcrypt PIN hash by checking all 4-digit candidates (admin backfill only). */
+export async function discoverPinFromHash(pinHash: string): Promise<string | null> {
+  for (let i = 0; i < 10_000; i += 1) {
+    const candidate = String(i).padStart(4, "0");
+    if (await verifyPinHash(candidate, pinHash)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/** Backfill manager PIN reference values for members created before pin_plaintext existed. */
+export async function backfillMissingPinPlaintext(): Promise<void> {
+  const members = await teamMemberRepo.listTeamMembersMissingPinPlaintext();
+  for (const member of members) {
+    const pin = await discoverPinFromHash(member.pin);
+    if (pin) {
+      await teamMemberRepo.updateTeamMemberPinPlaintext(member.id, pin);
+    }
+  }
 }

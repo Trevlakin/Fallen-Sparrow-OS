@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull } from "drizzle-orm";
 import { teamMembers } from "@fallen-sparrow/shared/schema";
 import type { TeamMemberRole } from "@fallen-sparrow/shared/constants";
 import { db } from "../config/database.js";
@@ -13,6 +13,10 @@ export type TeamMemberPublic = {
   updatedAt: Date;
 };
 
+export type TeamMemberAdmin = TeamMemberPublic & {
+  pinPlaintext: string | null;
+};
+
 function toPublic(row: typeof teamMembers.$inferSelect): TeamMemberPublic {
   return {
     id: row.id,
@@ -22,6 +26,13 @@ function toPublic(row: typeof teamMembers.$inferSelect): TeamMemberPublic {
     isActive: row.isActive,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function toAdmin(row: typeof teamMembers.$inferSelect): TeamMemberAdmin {
+  return {
+    ...toPublic(row),
+    pinPlaintext: row.pinPlaintext ?? null,
   };
 }
 
@@ -45,6 +56,28 @@ export async function listAllTeamMembers(
         .where(eq(teamMembers.isActive, true))
         .orderBy(asc(teamMembers.displayName));
   return rows.map(toPublic);
+}
+
+export async function listAllTeamMembersForAdmin(
+  includeInactive = false,
+): Promise<TeamMemberAdmin[]> {
+  const rows = includeInactive
+    ? await db.select().from(teamMembers).orderBy(asc(teamMembers.displayName))
+    : await db
+        .select()
+        .from(teamMembers)
+        .where(eq(teamMembers.isActive, true))
+        .orderBy(asc(teamMembers.displayName));
+  return rows.map(toAdmin);
+}
+
+export async function listTeamMembersMissingPinPlaintext(): Promise<
+  (typeof teamMembers.$inferSelect)[]
+> {
+  return db
+    .select()
+    .from(teamMembers)
+    .where(and(eq(teamMembers.isActive, true), isNull(teamMembers.pinPlaintext)));
 }
 
 export async function findTeamMemberById(
@@ -94,6 +127,7 @@ export async function insertTeamMember(input: {
   displayName: string;
   role: TeamMemberRole;
   pinHash: string;
+  pinPlaintext: string;
 }): Promise<TeamMemberPublic> {
   const [row] = await db
     .insert(teamMembers)
@@ -102,6 +136,7 @@ export async function insertTeamMember(input: {
       displayName: input.displayName,
       role: input.role,
       pin: input.pinHash,
+      pinPlaintext: input.pinPlaintext,
       isActive: true,
     })
     .returning();
@@ -131,10 +166,23 @@ export async function updateTeamMember(
 export async function updateTeamMemberPin(
   id: string,
   pinHash: string,
+  pinPlaintext: string,
 ): Promise<boolean> {
   const [row] = await db
     .update(teamMembers)
-    .set({ pin: pinHash, updatedAt: new Date() })
+    .set({ pin: pinHash, pinPlaintext, updatedAt: new Date() })
+    .where(eq(teamMembers.id, id))
+    .returning({ id: teamMembers.id });
+  return Boolean(row);
+}
+
+export async function updateTeamMemberPinPlaintext(
+  id: string,
+  pinPlaintext: string,
+): Promise<boolean> {
+  const [row] = await db
+    .update(teamMembers)
+    .set({ pinPlaintext, updatedAt: new Date() })
     .where(eq(teamMembers.id, id))
     .returning({ id: teamMembers.id });
   return Boolean(row);

@@ -4,6 +4,7 @@ import { createApp } from "./app.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { logger } from "./utils/logger.js";
 import { startAllJobs } from "./jobs/index.js";
+import { backfillMissingPinPlaintext } from "./services/teamMemberService.js";
 
 if (hasSentry() && env.SENTRY_DSN) {
   Sentry.init({
@@ -38,4 +39,9 @@ app.listen(env.PORT, () => {
     nodeEnv: env.NODE_ENV,
   });
   startAllJobs();
+  void backfillMissingPinPlaintext().catch((err: unknown) => {
+    logger.warn("PIN plaintext backfill failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
 });
