@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   const marker = resolve(dataDir, ".fallen-sparrow-seeded");
   if (!existsSync(marker)) {
     console.log("[local-db] Running migrations...");
-    await run("npx", ["drizzle-kit", "migrate"], serverRoot);
+    await run("npx", ["tsx", "src/db/migrate.ts"], serverRoot);
     console.log("[local-db] Seeding database...");
     await run("npx", ["tsx", "src/db/seed.ts"], serverRoot);
     const { writeFileSync } = await import("node:fs");
