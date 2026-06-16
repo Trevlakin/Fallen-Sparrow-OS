@@ -35,11 +35,9 @@ function parseCsvContent(csvText: string): PorterCsvRow[] {
   return records;
 }
 
-async function resolveCommissionPercentage(
-  serviceType: NormalizedPorterAppointment["serviceType"],
-): Promise<string> {
-  const rate = await settingsService.getCommissionRate(serviceType);
-  return rate.toFixed(4);
+async function resolveCommissionPercentage(totalRevenue: number): Promise<string> {
+  const { artistPct } = await settingsService.getSessionCommissionRate(totalRevenue);
+  return artistPct.toFixed(4);
 }
 
 async function ingestNormalizedRow(
@@ -74,7 +72,7 @@ async function ingestNormalizedRow(
     );
 
     if (row.status === "completed" && row.totalRevenue > 0) {
-      const commissionPct = await resolveCommissionPercentage(row.serviceType);
+      const commissionPct = await resolveCommissionPercentage(row.totalRevenue);
       const payout = (row.totalRevenue * Number.parseFloat(commissionPct)).toFixed(
         2,
       );

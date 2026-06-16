@@ -149,14 +149,14 @@ export async function listManualCommissions(
   }));
 }
 
-/** Rates and bonuses for commission calculations (settings only, never hardcoded). */
+/** Tiered commission settings and bonuses for calculations. */
 export async function getCommissionConfig(): Promise<{
-  rates: settingsService.CommissionRatesSetting;
+  tiers: settingsService.CommissionTiersSetting;
   bonuses: settingsService.BonusSettings;
 }> {
-  const [rates, bonuses] = await Promise.all([
-    settingsService.getCommissionRates(),
+  const [tiers, bonuses] = await Promise.all([
+    settingsService.getCommissionTiers(),
     settingsService.getBonusAmounts(),
   ]);
-  return { rates, bonuses };
+  return { tiers, bonuses };
 }

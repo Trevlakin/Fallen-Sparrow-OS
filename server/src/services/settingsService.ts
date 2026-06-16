@@ -1,12 +1,17 @@
+import { COMMISSION_TIERS, getCommissionRate } from "@fallen-sparrow/shared/constants";
 import * as settingsRepo from "../repos/settingsRepo.js";
+import { AppError } from "../utils/errors.js";
 
-export interface CommissionRatesSetting {
-  // TODO(Q1d): Confirm per-service commission rates with Legion before production.
-  tattoo: number;
-  piercing: number;
-  laser: number;
-  other: number;
-  confirmRates: boolean;
+export interface CommissionTierRecord {
+  thresholdAmount: number;
+  artistPct: number;
+  shopPct: number;
+  sortOrder: number;
+}
+
+export interface CommissionTiersSetting {
+  tiers: CommissionTierRecord[];
+  updatedAt: string | null;
 }
 
 export interface BonusSettings {
@@ -22,28 +27,25 @@ export interface ShopOperationalSetting {
 }
 
 export type FallenSparrowSettings = {
-  commissionRates: Pick<
-    CommissionRatesSetting,
-    "tattoo" | "piercing" | "laser" | "other"
-  >;
   walkInBonus: number;
   referralBonus: number;
   timezone: string;
   briefingHour: number;
   nudgeGapDays: number;
-  confirmRates: boolean;
 };
 
-const COMMISSION_RATES_KEY = "commission_rates";
+const COMMISSION_TIERS_KEY = "commission_tiers";
 const BONUS_AMOUNTS_KEY = "bonus_amounts";
 const SHOP_OPERATIONAL_KEY = "shop_operational";
 
-const DEFAULT_COMMISSION_RATES: CommissionRatesSetting = {
-  tattoo: 0.5,
-  piercing: 0.5,
-  laser: 0.5,
-  other: 0.5,
-  confirmRates: true,
+const DEFAULT_COMMISSION_TIERS: CommissionTiersSetting = {
+  tiers: COMMISSION_TIERS.map((tier, index) => ({
+    thresholdAmount: tier.threshold,
+    artistPct: tier.artistPct * 100,
+    shopPct: tier.shopPct * 100,
+    sortOrder: index + 1,
+  })),
+  updatedAt: null,
 };
 
 const DEFAULT_BONUS: BonusSettings = {
@@ -57,23 +59,40 @@ const DEFAULT_OPERATIONAL: ShopOperationalSetting = {
   nudgeGapDays: 30,
 };
 
+function sortTiers(tiers: CommissionTierRecord[]): CommissionTierRecord[] {
+  return [...tiers].sort((a, b) => a.thresholdAmount - b.thresholdAmount);
+}
+
+function normalizeTierRecord(
+  tier: { thresholdAmount: number; artistPct: number; shopPct?: number },
+  sortOrder: number,
+): CommissionTierRecord {
+  const artistPct = Math.round(tier.artistPct * 100) / 100;
+  const shopPct =
+    tier.shopPct !== undefined
+      ? Math.round(tier.shopPct * 100) / 100
+      : Math.round((100 - artistPct) * 100) / 100;
+  return {
+    thresholdAmount: tier.thresholdAmount,
+    artistPct,
+    shopPct,
+    sortOrder,
+  };
+}
+
 // shopId reserved for multi-location; single-tenant uses global settings keys.
 export async function getShopSettings(_shopId: string): Promise<FallenSparrowSettings> {
-  const [rates, bonuses, operational] = await Promise.all([
-    getCommissionRates(),
+  const [bonuses, operational] = await Promise.all([
     getBonusAmounts(),
     getShopOperational(),
   ]);
 
-  const { confirmRates, ...commissionRates } = rates;
   return {
-    commissionRates,
     walkInBonus: bonuses.walkInBonus,
     referralBonus: bonuses.referralBonus,
     timezone: operational.timezone,
     briefingHour: operational.briefingHour,
     nudgeGapDays: operational.nudgeGapDays,
-    confirmRates,
   };
 }
 
@@ -84,13 +103,7 @@ export async function upsertShopSettings(
   const current = await getShopSettings(_shopId);
   const merged: FallenSparrowSettings = { ...current, ...updates };
 
-  const commissionPayload: CommissionRatesSetting = {
-    ...merged.commissionRates,
-    confirmRates: merged.confirmRates,
-  };
-
   await Promise.all([
-    settingsRepo.upsertSetting(COMMISSION_RATES_KEY, commissionPayload),
     settingsRepo.upsertSetting(BONUS_AMOUNTS_KEY, {
       walkInBonus: merged.walkInBonus,
       referralBonus: merged.referralBonus,
@@ -105,31 +118,74 @@ export async function upsertShopSettings(
   return merged;
 }
 
+export async function getCommissionTiers(): Promise<CommissionTiersSetting> {
+  const stored = await settingsRepo.getSetting<CommissionTiersSetting>(
+    COMMISSION_TIERS_KEY,
+  );
+  if (!stored?.tiers?.length) {
+    return DEFAULT_COMMISSION_TIERS;
+  }
+  return {
+    tiers: sortTiers(stored.tiers),
+    updatedAt: stored.updatedAt ?? null,
+  };
+}
+
+export async function upsertCommissionTiers(
+  input: Array<{ thresholdAmount: number; artistPct: number }>,
+): Promise<CommissionTiersSetting> {
+  if (input.length === 0) {
+    throw new AppError("At least one commission tier is required", 400);
+  }
+
+  const tiers = sortTiers(
+    input.map((tier, index) => {
+      if (!Number.isFinite(tier.thresholdAmount) || tier.thresholdAmount < 0) {
+        throw new AppError("Threshold amount must be zero or greater", 400);
+      }
+      if (!Number.isFinite(tier.artistPct) || tier.artistPct < 0 || tier.artistPct > 100) {
+        throw new AppError("Artist share must be between 0 and 100", 400);
+      }
+      return normalizeTierRecord(
+        {
+          thresholdAmount: tier.thresholdAmount,
+          artistPct: tier.artistPct,
+        },
+        index + 1,
+      );
+    }),
+  );
+
+  const payload: CommissionTiersSetting = {
+    tiers,
+    updatedAt: new Date().toISOString(),
+  };
+  await settingsRepo.upsertSetting(COMMISSION_TIERS_KEY, payload);
+  return payload;
+}
+
+export async function getCommissionTierInputs() {
+  const { tiers } = await getCommissionTiers();
+  return tiers.map((tier) => ({
+    thresholdAmount: tier.thresholdAmount,
+    artistPct: tier.artistPct,
+    shopPct: tier.shopPct,
+  }));
+}
+
+/** Session payout rate from tiered settings (never flat per service type). */
+export async function getSessionCommissionRate(
+  sessionAmount: number,
+): Promise<{ artistPct: number; shopPct: number }> {
+  const tierInputs = await getCommissionTierInputs();
+  return getCommissionRate(sessionAmount, tierInputs);
+}
+
 async function getShopOperational(): Promise<ShopOperationalSetting> {
   const stored = await settingsRepo.getSetting<ShopOperationalSetting>(
     SHOP_OPERATIONAL_KEY,
   );
   return stored ?? DEFAULT_OPERATIONAL;
-}
-
-export async function getCommissionRate(
-  serviceType: keyof Pick<
-    CommissionRatesSetting,
-    "tattoo" | "piercing" | "laser" | "other"
-  >,
-): Promise<number> {
-  const stored = await settingsRepo.getSetting<CommissionRatesSetting>(
-    COMMISSION_RATES_KEY,
-  );
-  if (!stored) return DEFAULT_COMMISSION_RATES[serviceType];
-  return stored[serviceType];
-}
-
-export async function getCommissionRates(): Promise<CommissionRatesSetting> {
-  const stored = await settingsRepo.getSetting<CommissionRatesSetting>(
-    COMMISSION_RATES_KEY,
-  );
-  return stored ?? DEFAULT_COMMISSION_RATES;
 }
 
 export async function getBonusAmounts(): Promise<BonusSettings> {

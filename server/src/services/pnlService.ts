@@ -10,7 +10,11 @@ import {
   roundPercent,
   type ServiceType,
 } from "../lib/profit.js";
-import { getCommissionRate, type ArtistPayoutMethod } from "@fallen-sparrow/shared/constants";
+import {
+  getCommissionRate,
+  type CommissionTierInput,
+  type ArtistPayoutMethod,
+} from "@fallen-sparrow/shared/constants";
 import { SERVICE_TYPE_LABELS, type SchemaServiceType } from "@fallen-sparrow/shared/serviceTypes";
 import * as artistRepo from "../repos/artistRepo.js";
 import * as expenseRepo from "../repos/expenseRepo.js";
@@ -18,6 +22,7 @@ import * as pnlRepo from "../repos/pnlRepo.js";
 import * as revenueRepo from "../repos/revenueRepo.js";
 import * as commissionService from "./commissionService.js";
 import * as metricsService from "./metricsService.js";
+import * as settingsService from "./settingsService.js";
 import { AppError } from "../utils/errors.js";
 
 export interface PnlServiceLine {
@@ -75,23 +80,29 @@ export function tierLabelFromArtistPct(artistPct: number): string {
   return artistPct >= 0.7 ? "70/30" : "60/40";
 }
 
-export function tierLabelForSessionRevenues(revenues: number[]): string {
+export function tierLabelForSessionRevenues(
+  revenues: number[],
+  tiers?: CommissionTierInput[],
+): string {
   if (revenues.length === 0) return "60/40";
   const labels = new Set(
-    revenues.map((r) => tierLabelFromArtistPct(getCommissionRate(r).artistPct)),
+    revenues.map((r) => tierLabelFromArtistPct(getCommissionRate(r, tiers).artistPct)),
   );
   if (labels.size > 1) return "Mixed";
   return [...labels][0] ?? "60/40";
 }
 
-function sessionCommissionFields(revenue: number): {
+function sessionCommissionFields(
+  revenue: number,
+  tiers?: CommissionTierInput[],
+): {
   tierLabel: string;
   artistPct: number;
   shopPct: number;
   expectedArtistPayout: number;
   expectedShopShare: number;
 } {
-  const { artistPct, shopPct } = getCommissionRate(revenue);
+  const { artistPct, shopPct } = getCommissionRate(revenue, tiers);
   return {
     tierLabel: tierLabelFromArtistPct(artistPct),
     artistPct,
@@ -151,6 +162,7 @@ async function buildPnlSummary(
   from: Date,
   to: Date,
 ): Promise<PnlSummary> {
+  const commissionTiers = await settingsService.getCommissionTierInputs();
   const [
     aggregates,
     expenseTotal,
@@ -222,7 +234,10 @@ async function buildPnlSummary(
       line.payout = comm.totalArtistPayout;
       line.appointmentCount = comm.appointmentCount;
     }
-    line.tierLabel = tierLabelForSessionRevenues(revenuesByArtist.get(artistId) ?? []);
+    line.tierLabel = tierLabelForSessionRevenues(
+      revenuesByArtist.get(artistId) ?? [],
+      commissionTiers,
+    );
     line.shopKeepsPercent =
       line.revenue > 0
         ? roundPercent(calculateShopMargin(line.revenue, line.payout) / line.revenue * 100)
@@ -325,9 +340,10 @@ export async function getArtistPnlSessions(
 ): Promise<PnlArtistSessionsResult> {
   const from = startOfDayUtc(start);
   const to = endOfDayUtc(end);
-  const [rows, artists] = await Promise.all([
+  const [rows, artists, commissionTiers] = await Promise.all([
     pnlRepo.listArtistPaymentSessions(artistId, from, to),
     artistRepo.listArtistsForPicker(),
+    settingsService.getCommissionTierInputs(),
   ]);
 
   const artistName =
@@ -340,7 +356,10 @@ export async function getArtistPnlSessions(
   const sessions: PnlArtistSession[] = rows.map((row) => {
     const revenue = roundMoney(row.totalRevenue);
     const payout = roundMoney(row.artistPayout);
-    const { tierLabel, artistPct, shopPct } = sessionCommissionFields(revenue);
+    const { tierLabel, artistPct, shopPct } = sessionCommissionFields(
+      revenue,
+      commissionTiers,
+    );
     const paid = row.artistPaidAt !== null;
     totalRevenue += revenue;
     totalPayout += payout;

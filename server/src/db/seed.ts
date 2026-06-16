@@ -20,20 +20,19 @@ import { hashPassword } from "../services/authService.js";
 import { hashPin } from "../services/teamMemberService.js";
 import type {
   BonusSettings,
-  CommissionRatesSetting,
+  CommissionTiersSetting,
 } from "../services/settingsService.js";
 
-const COMMISSION_RATES_KEY = "commission_rates";
+const COMMISSION_TIERS_KEY = "commission_tiers";
 const BONUS_AMOUNTS_KEY = "bonus_amounts";
 
 async function seedSettings(): Promise<void> {
-  const commissionRates: CommissionRatesSetting = {
-    // TODO(Q1d): Confirm per-service commission rates with Legion.
-    tattoo: 0.5,
-    piercing: 0.5,
-    laser: 0.5,
-    other: 0.5,
-    confirmRates: true,
+  const commissionTiers: CommissionTiersSetting = {
+    tiers: [
+      { thresholdAmount: 0, artistPct: 60, shopPct: 40, sortOrder: 1 },
+      { thresholdAmount: 1000, artistPct: 70, shopPct: 30, sortOrder: 2 },
+    ],
+    updatedAt: null,
   };
 
   const bonusAmounts: BonusSettings = {
@@ -43,7 +42,7 @@ async function seedSettings(): Promise<void> {
   };
 
   for (const [key, value] of [
-    [COMMISSION_RATES_KEY, commissionRates],
+    [COMMISSION_TIERS_KEY, commissionTiers],
     [BONUS_AMOUNTS_KEY, bonusAmounts],
   ] as const) {
     const existing = await db

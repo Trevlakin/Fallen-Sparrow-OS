@@ -6,8 +6,10 @@ import { parse } from "csv-parse/sync";
 import {
   EXPENSE_CATEGORIES,
   getCommissionRate,
+  type CommissionTierInput,
   type ExpenseCategoryKey,
 } from "@fallen-sparrow/shared/constants";
+import * as settingsService from "./settingsService.js";
 import {
   normalizeCsvServiceType,
   toSchemaServiceType,
@@ -234,6 +236,7 @@ export function detectCsvFormat(headers: string[]): CsvFormat {
 function parseAppointmentRow(
   row: string[],
   headers: string[],
+  commissionTiers?: CommissionTierInput[],
 ): ParsedAppointment | null {
   const dateRaw = getCell(row, headers, "Date");
   const appointmentDate = parseDate(dateRaw);
@@ -245,7 +248,7 @@ function parseAppointmentRow(
 
   const payoutRaw = getCell(row, headers, "Artist Payout");
   const parsedPayout = payoutRaw ? parseAmount(payoutRaw) : null;
-  const { artistPct } = getCommissionRate(totalRevenue);
+  const { artistPct } = getCommissionRate(totalRevenue, commissionTiers);
   const artistPayout =
     parsedPayout !== null ? parsedPayout : Math.round(totalRevenue * artistPct * 100) / 100;
 
@@ -265,6 +268,7 @@ function parseAppointmentRowMapped(
   row: string[],
   headers: string[],
   mapping: AppointmentColumnMapping,
+  commissionTiers?: CommissionTierInput[],
 ): ParsedAppointment | null {
   const appointmentDate = parseDate(getMappedCell(row, headers, mapping.date));
   const totalRevenue = parseAmount(
@@ -280,7 +284,7 @@ function parseAppointmentRowMapped(
     ? getMappedCell(row, headers, payoutCol)
     : "";
   const parsedPayout = payoutRaw ? parseAmount(payoutRaw) : null;
-  const { artistPct } = getCommissionRate(totalRevenue);
+  const { artistPct } = getCommissionRate(totalRevenue, commissionTiers);
   const artistPayout =
     parsedPayout !== null ? parsedPayout : Math.round(totalRevenue * artistPct * 100) / 100;
 
@@ -417,13 +421,14 @@ export async function importAppointmentsCsv(csvString: string): Promise<ImportRe
 
   const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
   const affectedCustomers = new Set<string>();
+  const commissionTiers = await settingsService.getCommissionTierInputs();
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 2;
     const row = rows[i];
     if (!row) continue;
 
-    const parsed = parseAppointmentRow(row, headers);
+    const parsed = parseAppointmentRow(row, headers, commissionTiers);
     if (!parsed) {
       result.skipped += 1;
       result.errors.push({
@@ -605,13 +610,14 @@ export async function importAppointmentsCsvWithMapping(
   const { headers, rows } = parseCsvToRows(csvString);
   const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
   const affectedCustomers = new Set<string>();
+  const commissionTiers = await settingsService.getCommissionTierInputs();
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 2;
     const row = rows[i];
     if (!row) continue;
 
-    const parsed = parseAppointmentRowMapped(row, headers, mapping);
+    const parsed = parseAppointmentRowMapped(row, headers, mapping, commissionTiers);
     if (!parsed) {
       result.skipped += 1;
       result.errors.push({

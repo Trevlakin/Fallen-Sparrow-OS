@@ -141,6 +141,13 @@
       "when": 1780002500000,
       "tag": "0019_seed_missing_sops",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780002600000,
+      "tag": "0020_seed_commission_tiers",
+      "breakpoints": true
     }
   ]
 }

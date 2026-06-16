@@ -12,7 +12,6 @@ import { ImportResultBlock } from "@/components/ImportResultBlock";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { PnlImportHistory } from "@/components/PnlImportHistory";
 import { PnlArtistSessionsDrawer } from "@/components/PnlArtistSessionsDrawer";
-import { RatesWarning } from "@/components/RatesWarning";
 import { APPOINTMENT_CSV_FIELDS, EXPENSE_CSV_FIELDS } from "@/lib/csvMappingFields";
 import type { ImportResult } from "@/lib/csvImport";
 import { emitCsvImport, emitData, DATA_EVENTS } from "@/lib/eventBus";
@@ -420,7 +419,6 @@ export function PnlPage() {
       {loading && <p className="text-muted pnl-loading">Loading summary…</p>}
       {pnl && (
         <>
-          <RatesWarning />
           <div className="pnl-summary-block">
             <div className="kpi-row pnl-kpi-row">
               <div className="kpi-card">

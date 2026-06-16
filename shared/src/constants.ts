@@ -105,13 +105,47 @@ export const NUDGE_RULES = {
 
 /** Sprint 9A: tiered commission tiers (60/40 under $1k, 70/30 at $1k+). */
 export const COMMISSION_TIERS = [
-  { threshold: 0,    artistPct: 0.60, shopPct: 0.40 },
+  { threshold: 0, artistPct: 0.60, shopPct: 0.40 },
   { threshold: 1000, artistPct: 0.70, shopPct: 0.30 },
 ] as const;
 
-export function getCommissionRate(amount: number): { artistPct: number; shopPct: number } {
-  const tier = [...COMMISSION_TIERS].reverse().find((t) => amount >= t.threshold);
-  return tier ?? COMMISSION_TIERS[0];
+export interface CommissionTierInput {
+  thresholdAmount: number;
+  artistPct: number;
+  shopPct: number;
+}
+
+function normalizeTierPct(value: number): number {
+  return value > 1 ? value / 100 : value;
+}
+
+/** Tiered artist/shop split for a session amount. Optional tiers override defaults (DB settings). */
+export function getCommissionRate(
+  amount: number,
+  tiers?: CommissionTierInput[],
+): { artistPct: number; shopPct: number } {
+  const activeTiers = tiers
+    ? tiers.map((tier) => ({
+        threshold: tier.thresholdAmount,
+        artistPct: normalizeTierPct(tier.artistPct),
+        shopPct: normalizeTierPct(tier.shopPct),
+      }))
+    : COMMISSION_TIERS.map((tier) => ({
+        threshold: tier.threshold,
+        artistPct: tier.artistPct,
+        shopPct: tier.shopPct,
+      }));
+
+  const sorted = [...activeTiers].sort((a, b) => b.threshold - a.threshold);
+  const match = sorted.find((tier) => amount >= tier.threshold) ?? activeTiers[0];
+  return match ?? { artistPct: 0.6, shopPct: 0.4 };
+}
+
+export function formatCommissionTierLabel(artistPct: number): string {
+  const pct = artistPct > 1 ? artistPct : artistPct * 100;
+  const artist = Math.round(pct);
+  const shop = 100 - artist;
+  return `${artist}/${shop}`;
 }
 
 export const USER_ROLES = ["OWNER", "MANAGER", "FRONT_DESK", "ARTIST"] as const;

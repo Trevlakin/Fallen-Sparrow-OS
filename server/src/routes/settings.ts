@@ -21,3 +21,19 @@ settingsRouter.patch(
   requireOwner,
   settingsController.patchSettings,
 );
+
+settingsRouter.get(
+  "/commission-tiers",
+  requireAuth,
+  enforceTenant,
+  requireManager,
+  settingsController.getCommissionTiers,
+);
+
+settingsRouter.put(
+  "/commission-tiers",
+  requireAuth,
+  enforceTenant,
+  requireOwner,
+  settingsController.putCommissionTiers,
+);

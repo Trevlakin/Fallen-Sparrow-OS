@@ -102,8 +102,8 @@ export async function createManualSale(
       throw new AppError("Artist payout cannot exceed total revenue", 400);
     }
   } else {
-    const rate = await settingsService.getCommissionRate(serviceType);
-    artistPayout = totalRevenue * rate;
+    const { artistPct } = await settingsService.getSessionCommissionRate(totalRevenue);
+    artistPayout = totalRevenue * artistPct;
   }
 
   const commissionPct =

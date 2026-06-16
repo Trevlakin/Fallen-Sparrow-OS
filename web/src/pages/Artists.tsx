@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { RatesWarning } from "@/components/RatesWarning";
 import { useEventBusRefresh } from "@/hooks/useEventBusRefresh";
 import { DATA_EVENTS } from "@/lib/eventBus";
 import { formatCurrency, formatPercent, toDateInput } from "@/lib/format";
@@ -61,7 +60,6 @@ export function ArtistsPage() {
             {canViewFinancials && (
               <p className="value-amber">
                 {formatCurrency(artist.totalRevenue)} revenue
-                <RatesWarning variant="compact" />
               </p>
             )}
             <p>{artist.appointmentCount} appointments</p>

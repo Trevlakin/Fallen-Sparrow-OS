@@ -4,7 +4,6 @@ import { useAuth } from "@/context/AuthContext";
 import { CsvColumnMapperModal } from "@/components/CsvColumnMapperModal";
 import { QuickBooksConnect } from "@/components/QuickBooksConnect";
 import { ImportResultBlock } from "@/components/ImportResultBlock";
-import { RatesWarning } from "@/components/RatesWarning";
 import { ShareDemoLink } from "@/components/ShareDemoLink";
 import { APPOINTMENT_CSV_FIELDS } from "@/lib/csvMappingFields";
 import type { ImportResult } from "@/lib/csvImport";
@@ -14,28 +13,24 @@ import { useTour } from "@/hooks/useTour";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 interface SettingsData {
-  commissionRates: {
-    tattoo: number;
-    piercing: number;
-    laser: number;
-    other: number;
-  };
   walkInBonus: number;
   referralBonus: number;
   timezone: string;
   briefingHour: number;
   nudgeGapDays: number;
-  confirmRates: boolean;
 }
 
-type RateKey = keyof SettingsData["commissionRates"];
+interface CommissionTierRow {
+  thresholdAmount: number;
+  artistPct: number;
+  shopPct: number;
+  sortOrder: number;
+}
 
-const RATE_LABELS: Record<RateKey, string> = {
-  tattoo: "Tattoo",
-  piercing: "Piercing",
-  laser: "Laser Removal",
-  other: "Other",
-};
+interface CommissionTiersData {
+  tiers: CommissionTierRow[];
+  updatedAt: string | null;
+}
 
 export function SettingsPage() {
   const { user, refresh } = useAuth();
@@ -43,6 +38,11 @@ export function SettingsPage() {
   const { replayTour } = useTour(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [settings, setSettings] = useState<SettingsData | null>(null);
+  const [commissionTiers, setCommissionTiers] = useState<CommissionTierRow[]>([]);
+  const [commissionUpdatedAt, setCommissionUpdatedAt] = useState<string | null>(null);
+  const [savingCommission, setSavingCommission] = useState(false);
+  const [commissionMessage, setCommissionMessage] = useState("");
+  const [commissionError, setCommissionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -65,18 +65,72 @@ export function SettingsPage() {
   const appointmentsFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void api
-      .get<SettingsData>("/api/settings")
-      .then(setSettings)
+    void Promise.all([
+      api.get<SettingsData>("/api/settings"),
+      api.get<CommissionTiersData>("/api/settings/commission-tiers"),
+    ])
+      .then(([settingsData, tiersData]) => {
+        setSettings(settingsData);
+        setCommissionTiers(tiersData.tiers);
+        setCommissionUpdatedAt(tiersData.updatedAt);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const updateRate = (key: RateKey, value: number) => {
-    if (!settings) return;
-    setSettings({
-      ...settings,
-      commissionRates: { ...settings.commissionRates, [key]: value },
-    });
+  const updateTier = (
+    sortOrder: number,
+    field: "thresholdAmount" | "artistPct",
+    value: number,
+  ) => {
+    setCommissionTiers((prev) =>
+      prev.map((tier) => {
+        if (tier.sortOrder !== sortOrder) return tier;
+        const artistPct = field === "artistPct" ? value : tier.artistPct;
+        return {
+          ...tier,
+          [field]: value,
+          shopPct: field === "artistPct" ? Math.max(0, 100 - value) : tier.shopPct,
+          artistPct,
+        };
+      }),
+    );
+    setCommissionMessage("");
+    setCommissionError("");
+  };
+
+  const addTier = () => {
+    setCommissionTiers((prev) => [
+      ...prev,
+      {
+        thresholdAmount: 0,
+        artistPct: 60,
+        shopPct: 40,
+        sortOrder: prev.length + 1,
+      },
+    ]);
+  };
+
+  const saveCommissionTiers = async () => {
+    setSavingCommission(true);
+    setCommissionMessage("");
+    setCommissionError("");
+    try {
+      const saved = await api.put<CommissionTiersData>("/api/settings/commission-tiers", {
+        tiers: commissionTiers.map((tier) => ({
+          thresholdAmount: tier.thresholdAmount,
+          artistPct: tier.artistPct,
+        })),
+      });
+      setCommissionTiers(saved.tiers);
+      setCommissionUpdatedAt(saved.updatedAt);
+      setCommissionMessage("Commission structure saved");
+      showToast("Commission structure saved", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save. Try again.";
+      setCommissionError(message);
+    } finally {
+      setSavingCommission(false);
+    }
   };
 
   const handleSave = async (e: FormEvent) => {
@@ -183,58 +237,88 @@ export function SettingsPage() {
 
       <ShareDemoLink />
 
-      <RatesWarning />
-
       <section className="settings-section integrations-section">
         <h2>Integrations</h2>
         <QuickBooksConnect />
       </section>
 
-      <form onSubmit={(e) => void handleSave(e)} className="settings-section">
-        <h2 id="commission-rates">Commission Rates</h2>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Artist Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Object.keys(RATE_LABELS) as RateKey[]).map((key) => (
-                <tr key={key}>
-                  <td>{RATE_LABELS[key]}</td>
-                  <td>
+      <section className="settings-section commission-tiers-section">
+        <h2 id="commission-rates">Commission Structure</h2>
+        <p className="text-muted">
+          How artist payouts are calculated based on session amount.
+        </p>
+
+        <div className="commission-tier-list">
+          {[...commissionTiers]
+            .sort((a, b) => a.thresholdAmount - b.thresholdAmount)
+            .map((tier, index) => (
+              <div key={tier.sortOrder} className="commission-tier-card">
+                <h3>Tier {index + 1}</h3>
+                <div className="commission-tier-fields">
+                  <label className="form-field">
+                    {index === 0 ? "Sessions under ($)" : "Sessions $ and above"}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={tier.thresholdAmount}
+                      onChange={(e) =>
+                        updateTier(tier.sortOrder, "thresholdAmount", Number(e.target.value))
+                      }
+                    />
+                  </label>
+                  <label className="form-field">
+                    Artist share (%)
                     <input
                       type="number"
                       min={0}
                       max={100}
                       step={1}
-                      value={Math.round(settings.commissionRates[key] * 100)}
+                      value={tier.artistPct}
                       onChange={(e) =>
-                        updateRate(key, Number(e.target.value) / 100)
+                        updateTier(tier.sortOrder, "artistPct", Number(e.target.value))
                       }
-                      className="rate-input"
                     />
-                    %
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </label>
+                  <div className="commission-tier-shop">
+                    <span className="account-label">Shop keeps</span>
+                    <strong>{Math.max(0, 100 - tier.artistPct)}%</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
         </div>
 
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={settings.confirmRates}
-            onChange={(e) =>
-              setSettings({ ...settings, confirmRates: e.target.checked })
-            }
-          />
-          Rates confirmed with studio owner
-        </label>
+        <button type="button" className="btn-text commission-add-tier" onClick={addTier}>
+          + Add tier
+        </button>
 
+        <div className="commission-tier-actions">
+          <button
+            type="button"
+            className="btn-amber"
+            disabled={savingCommission}
+            onClick={() => void saveCommissionTiers()}
+          >
+            {savingCommission ? "Saving..." : "Save Commission Structure"}
+          </button>
+          {commissionMessage && <p className="form-success">{commissionMessage}</p>}
+          {commissionError && <p className="form-error">{commissionError}</p>}
+          {commissionUpdatedAt && (
+            <p className="text-muted commission-last-saved">
+              Last saved:{" "}
+              {new Date(commissionUpdatedAt).toLocaleString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <form onSubmit={(e) => void handleSave(e)} className="settings-section">
         <h2>Bonuses</h2>
         <div className="settings-grid">
           <label className="form-field">

@@ -1802,6 +1802,69 @@ textarea {
   max-width: 640px;
 }
 
+.commission-tiers-section {
+  max-width: 720px;
+}
+
+.commission-tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.commission-tier-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+}
+
+.commission-tier-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.commission-tier-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.commission-tier-shop {
+  padding-bottom: 0.35rem;
+}
+
+.commission-tier-shop strong {
+  font-size: 1.1rem;
+  color: var(--amber);
+}
+
+.commission-add-tier {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.commission-tier-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.commission-last-saved {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .commission-tier-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .account-settings-row {
   display: flex;
   align-items: center;

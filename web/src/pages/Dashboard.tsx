@@ -4,7 +4,6 @@ import html2pdf from "html2pdf.js";
 import { ContinuityDrawer } from "@/components/ContinuityDrawer";
 import { EmptyState } from "@/components/EmptyState";
 import { KpiConfigModal } from "@/components/KpiConfigModal";
-import { RatesWarning } from "@/components/RatesWarning";
 import {
   useAuth,
   useCanViewFinancials,
@@ -606,8 +605,6 @@ export function DashboardPage() {
           </div>
         )}
 
-        {canViewFinancials && <RatesWarning />}
-
         <div className="kpi-row" data-tour="kpi-cards">
           <KpiCard
             hidden={!kpiConfig.totalRevenue || !canViewFinancials}
@@ -741,10 +738,7 @@ export function DashboardPage() {
                       </Link>
                       <span className="value-amber">
                         {canViewFinancials ? (
-                          <>
-                            {formatCurrencyDetailed(artist.totalRevenue)}
-                            <RatesWarning variant="compact" />
-                          </>
+                          formatCurrencyDetailed(artist.totalRevenue)
                         ) : (
                           `${artist.appointmentCount} appts`
                         )}
