@@ -162,6 +162,13 @@
       "when": 1780002800000,
       "tag": "0022_sync_team_member_pin_hashes",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780002900000,
+      "tag": "0023_reset_roster_pin_hashes",
+      "breakpoints": true
     }
   ]
 }
