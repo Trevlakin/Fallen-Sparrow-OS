@@ -39,10 +39,9 @@ async function startServer(): Promise<void> {
   try {
     await runMigrations(env.DATABASE_URL);
   } catch (err: unknown) {
-    logger.error("Database migrations failed on startup", {
+    logger.error("Database migrations failed on startup (API will still start)", {
       error: err instanceof Error ? err.message : String(err),
     });
-    process.exit(1);
   }
 
   app.listen(env.PORT, () => {

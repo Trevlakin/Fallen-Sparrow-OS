@@ -80,11 +80,22 @@ export async function listTeamMembersMissingPinPlaintext(): Promise<
     .where(and(eq(teamMembers.isActive, true), isNull(teamMembers.pinPlaintext)));
 }
 
+const teamMemberAuthColumns = {
+  id: teamMembers.id,
+  name: teamMembers.name,
+  displayName: teamMembers.displayName,
+  role: teamMembers.role,
+  pin: teamMembers.pin,
+  isActive: teamMembers.isActive,
+  createdAt: teamMembers.createdAt,
+  updatedAt: teamMembers.updatedAt,
+};
+
 export async function findTeamMemberById(
   id: string,
 ): Promise<(typeof teamMembers.$inferSelect) | null> {
   const [row] = await db
-    .select()
+    .select(teamMemberAuthColumns)
     .from(teamMembers)
     .where(eq(teamMembers.id, id))
     .limit(1);
@@ -202,7 +213,7 @@ export async function listActiveTeamMembersWithPinHash(): Promise<
   (typeof teamMembers.$inferSelect)[]
 > {
   return db
-    .select()
+    .select(teamMemberAuthColumns)
     .from(teamMembers)
     .where(eq(teamMembers.isActive, true))
     .orderBy(asc(teamMembers.displayName));
